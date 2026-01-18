@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body style="font-family: system-ui; max-width: 520px; margin: 40px auto; padding: 0 16px;">
-  <h2>⏳ Iščemo družbo…</h2>
+  <h2 id="heading">⏳ Iščemo družbo…</h2>
   <p>Lokacija: <b>{{ location }}</b><br>Čas: <b>{{ when }}</b></p>
 
   <p id="status">Še ni matcha. Stran se osvežuje…</p>
@@ -16,8 +16,10 @@
       const res = await fetch(`/status/{{ rid }}`);
       const data = await res.json();
       if (data.status === "matched") {
-        // redirect to matched page is simplest, but we don't have server-side session.
-        // We'll just show a link.
+        // Match found — update heading + show WhatsApp link
+        const heading = document.getElementById("heading");
+        if (heading) heading.textContent = "✅ Našli smo družbo!";
+
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}) okoli {{ when }}. Greva skupaj?`;
         const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
         document.getElementById("status").innerHTML =
