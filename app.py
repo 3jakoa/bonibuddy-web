@@ -10,7 +10,10 @@ import engine_web as engine
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-LOCATIONS = ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"]
+LOCATIONS_BY_CITY = {
+    "ljubljana": ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"],
+    "maribor": ["Center", "Tabor", "Studenci", "Drugo"],
+}
 
 def normalize_phone(raw: str) -> str:
     # Sprejmi npr: +386 40 111 222 ali 040111222
@@ -30,12 +33,16 @@ def wa_link(phone: str, text: str) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS})
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"]},
+    )
 
 @app.post("/go", response_class=HTMLResponse)
 def go(
     request: Request,
     time_choice: str = Form(...),
+    city: str = Form(...),
     location: str = Form(...),
     match_pref: str = Form(...),
     gender: str = Form(...),
@@ -45,28 +52,39 @@ def go(
     if consent != "yes":
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "locations": LOCATIONS,
+            "locations": LOCATIONS_BY_CITY["ljubljana"],
             "error": "Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."
         })
 
-    if location not in LOCATIONS:
-        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS, "error": "Neveljavna lokacija."})
+    if city not in LOCATIONS_BY_CITY:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavno mesto."},
+        )
+
+    allowed_locations = LOCATIONS_BY_CITY[city]
+
+    if location not in allowed_locations:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna lokacija."},
+        )
 
     if match_pref not in {"any", "female", "male"}:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "locations": LOCATIONS, "error": "Neveljavna izbira preference."},
+            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna izbira preference."},
         )
 
     if gender not in {"female", "male"}:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "locations": LOCATIONS, "error": "Neveljavna izbira spola."},
+            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna izbira spola."},
         )
 
     phone_n = normalize_phone(phone)
     if len(phone_n) < 8:
-        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS, "error": "Vpiši veljavno WhatsApp številko."})
+        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Vpiši veljavno WhatsApp številko."})
 
     offset = int(time_choice)
     when = datetime.now() + timedelta(minutes=offset)
@@ -77,6 +95,7 @@ def go(
         phone=phone_n,
         match_pref=match_pref,
         gender=gender,
+        city=city,
     )
 
     if res["status"] == "matched":
@@ -88,6 +107,7 @@ def go(
             "when": when.strftime("%H:%M"),
             "other_phone": other,
             "wa_url": wa_link(other, msg),
+            "city": city,
         })
 
     # waiting
@@ -96,6 +116,7 @@ def go(
         "rid": res["rid"],
         "location": location,
         "when": when.strftime("%H:%M"),
+        "city": city,
     })
 
 @app.get("/status/{rid}")

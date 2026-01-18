@@ -126,6 +126,19 @@
       color: var(--muted);
       text-align: center;
     }
+
+    .city-btn{
+      flex:1;
+      padding:10px 12px;
+      font-size:14px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+
+    .city-btn.active{
+      background: linear-gradient(135deg, #6aa6ff, #7dd3a8);
+      color:#081018;
+    }
   </style>
 </head>
 <body>
@@ -136,6 +149,16 @@
     {% if error %}
       <div class="error">{{ error }}</div>
     {% endif %}
+
+    <div class="field" style="margin-bottom:16px;">
+      <label>Mesto</label>
+      <div id="city-toggle" style="display:flex; gap:10px;">
+        <button type="button" class="btn city-btn active" data-city="ljubljana">Ljubljana</button>
+        <button type="button" class="btn city-btn" data-city="maribor">Maribor</button>
+      </div>
+    </div>
+
+    <input type="hidden" name="city" id="city" value="ljubljana">
 
     <form method="post" action="/go">
       <div class="field">
@@ -157,11 +180,7 @@
 
       <div class="field">
         <label>Kje?</label>
-        <select name="location" required>
-          {% for l in locations %}
-            <option value="{{ l }}">{{ l }}</option>
-          {% endfor %}
-        </select>
+        <select name="location" id="location" required></select>
       </div>
 
       <div class="field">
@@ -191,5 +210,38 @@
       MVP • podatkov ne shranjujemo trajno • brez profilov
     </div>
   </div>
+<script>
+  const LOCATIONS = {
+    ljubljana: ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"],
+    maribor: ["Center", "Tabor", "Studenci", "Drugo"],
+  };
+
+  const cityInput = document.getElementById("city");
+  const locationSelect = document.getElementById("location");
+  const buttons = document.querySelectorAll(".city-btn");
+
+  function renderLocations(city){
+    locationSelect.innerHTML = "";
+    LOCATIONS[city].forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l;
+      opt.textContent = l;
+      locationSelect.appendChild(opt);
+    });
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      buttons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const city = btn.dataset.city;
+      cityInput.value = city;
+      renderLocations(city);
+    });
+  });
+
+  // init
+  renderLocations("ljubljana");
+</script>
 </body>
 </html>
