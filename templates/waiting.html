@@ -1,40 +1,190 @@
 <!doctype html>
-<html>
+<html lang="sl">
 <head>
   <meta charset="utf-8">
-  <title>Čakam…</title>
+  <title>BoniBuddy • Čakam</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body style="font-family: system-ui; max-width: 520px; margin: 40px auto; padding: 0 16px;">
-  <h2 id="heading">⏳ Iščemo družbo…</h2>
-  <p>Lokacija: <b>{{ location }}</b><br>Čas: <b>{{ when }}</b></p>
 
-  <p id="status">Še ni matcha. Stran se osvežuje…</p>
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: rgba(255,255,255,0.08);
+      --card2: rgba(255,255,255,0.06);
+      --text: rgba(255,255,255,0.95);
+      --muted: rgba(255,255,255,0.65);
+      --border: rgba(255,255,255,0.14);
+      --accent: #6aa6ff;
+      --danger: #ff5a6a;
+      --radius: 18px;
+      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(900px 600px at 20% 0%, rgba(106,166,255,0.22), transparent 60%),
+        radial-gradient(900px 600px at 90% 10%, rgba(65,209,139,0.18), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card{
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 20px 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      font-size: 20px;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .subtitle{
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.35;
+    }
+
+    .chips{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0 16px;
+    }
+
+    .chip{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .muted{ color: var(--muted); }
+
+    .row{ margin-top: 14px; }
+
+    .btn{
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #6aa6ff, #7dd3a8);
+      color: #081018;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn:active{ transform: scale(0.98); }
+
+    .link{
+      display: inline-block;
+      margin-top: 14px;
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .link:hover{ text-decoration: underline; }
+
+    .spinner{
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0.22);
+      border-top-color: rgba(255,255,255,0.85);
+      display: inline-block;
+      vertical-align: -3px;
+      margin-right: 8px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error{
+      background: rgba(255,90,106,0.12);
+      border: 1px solid rgba(255,90,106,0.35);
+      color: #ffd6db;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin: 12px 0 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="heading">⏳ Iščemo družbo</h1>
+    <div class="subtitle">
+      <span class="spinner" aria-hidden="true"></span>
+      Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
+    </div>
+
+    <div class="chips">
+      <div class="chip">📍 <b>{{ location }}</b></div>
+      <div class="chip">🕒 <b>{{ when }}</b></div>
+    </div>
+
+    <div id="status" class="muted">Še ni matcha…</div>
+
+    <div class="row">
+      <a class="link" href="/">Nazaj</a>
+    </div>
+  </div>
 
   <script>
     async function poll() {
       const res = await fetch(`/status/{{ rid }}`);
       const data = await res.json();
+
       if (data.status === "matched") {
-        // Match found — update heading + show WhatsApp link
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
 
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}) okoli {{ when }}. Greva skupaj?`;
         const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
+
+        // Replace status area with a primary button
         document.getElementById("status").innerHTML =
-          `✅ Našli smo match! <a href="${wa}">Odpri WhatsApp</a>`;
+          `<div style="margin: 14px 0 10px;" class="muted">Klikni spodaj in pošlji prvo sporočilo.</div>` +
+          `<a class="btn" href="${wa}">Odpri WhatsApp</a>`;
         return;
       }
+
       if (data.status === "expired") {
-        document.getElementById("status").innerText = "Request je potekel. Poskusi še enkrat na začetni strani.";
+        const heading = document.getElementById("heading");
+        if (heading) heading.textContent = "⏱️ Request je potekel";
+        document.getElementById("status").innerHTML =
+          `<div class="error">Request je potekel. Poskusi še enkrat na začetni strani.</div>`;
         return;
       }
+
       setTimeout(poll, 3000);
     }
+
     poll();
   </script>
-
-  <p style="margin-top: 18px;"><a href="/">Nazaj</a></p>
 </body>
 </html>
