@@ -139,7 +139,7 @@
       <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
-    <a class="btn" href="{{ wa_url }}">Odpri WhatsApp</a>
+    <a class="btn" href="{{ wa_url }}" onclick="gtag('event','click_whatsapp');">Odpri WhatsApp</a>
 
     <div class="box">
       <div class="label">Predlagano sporočilo</div>
