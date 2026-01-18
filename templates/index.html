@@ -1,50 +1,177 @@
 <!doctype html>
-<html>
+<html lang="sl">
 <head>
   <meta charset="utf-8">
   <title>BoniBuddy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: rgba(255,255,255,0.08);
+      --card2: rgba(255,255,255,0.06);
+      --text: rgba(255,255,255,0.95);
+      --muted: rgba(255,255,255,0.65);
+      --border: rgba(255,255,255,0.14);
+      --accent: #6aa6ff;
+      --danger: #ff5a6a;
+      --radius: 18px;
+      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(900px 600px at 20% 0%, rgba(106,166,255,0.22), transparent 60%),
+        radial-gradient(900px 600px at 90% 10%, rgba(65,209,139,0.18), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card{
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 20px 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      font-size: 22px;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .subtitle{
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    label{
+      font-size: 13px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select, input[type="tel"]{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      outline: none;
+      font-size: 15px;
+    }
+
+    select:focus, input:focus{
+      border-color: var(--accent);
+    }
+
+    .field{ margin-bottom: 14px; }
+
+    .consent{
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 12px 0 18px;
+    }
+
+    .consent input{ margin-top: 3px; }
+
+    .btn{
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #6aa6ff, #7dd3a8);
+      color: #081018;
+    }
+
+    .btn:active{ transform: scale(0.98); }
+
+    .error{
+      background: rgba(255,90,106,0.12);
+      border: 1px solid rgba(255,90,106,0.35);
+      color: #ffd6db;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .foot{
+      margin-top: 18px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
 </head>
-<body style="font-family: system-ui; max-width: 520px; margin: 40px auto; padding: 0 16px;">
-  <h2>🍽️ BoniBuddy</h2>
-  <p>Najdi družbo za bone v Ljubljani – brez logina, v 20 sekundah.</p>
+<body>
+  <div class="card">
+    <h1>🍽️ BoniBuddy</h1>
+    <div class="subtitle">Najdi družbo za bone v Ljubljani — brez logina, v ~20 sekundah.</div>
 
-  {% if error %}
-    <p style="color: #b00020;"><b>{{ error }}</b></p>
-  {% endif %}
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
 
-  <form method="post" action="/go">
-    <label><b>Kdaj?</b></label><br>
-    <select name="time_choice" required>
-      <option value="0">Zdaj</option>
-      <option value="30">Čez 30 min</option>
-      <option value="60">Čez 1 uro</option>
-    </select>
-    <br><br>
+    <form method="post" action="/go">
+      <div class="field">
+        <label>Kdaj želiš jest?</label>
+        <select name="time_choice" required>
+          <option value="0">Zdaj</option>
+          <option value="30">Čez 30 min</option>
+          <option value="60">Čez 1 uro</option>
+        </select>
+      </div>
 
-    <label><b>Kje?</b></label><br>
-    <select name="location" required>
-      {% for l in locations %}
-        <option value="{{ l }}">{{ l }}</option>
-      {% endfor %}
-    </select>
-    <br><br>
+      <div class="field">
+        <label>Kje?</label>
+        <select name="location" required>
+          {% for l in locations %}
+            <option value="{{ l }}">{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-    <label><b>WhatsApp številka</b> (npr. +38640111222)</label><br>
-    <input name="phone" type="tel" required style="width: 100%; padding: 10px;">
-    <br><br>
+      <div class="field">
+        <label>WhatsApp številka</label>
+        <input name="phone" type="tel" placeholder="+38640111222" required>
+      </div>
 
-    <label>
-      <input type="checkbox" name="consent" value="yes" required>
-      Strinjam se, da se moja številka deli samo ob matchu.
-    </label>
-    <br><br>
+      <label class="consent">
+        <input type="checkbox" name="consent" value="yes" required>
+        <span>Strinjam se, da se moja številka deli samo ob uspešnem matchu.</span>
+      </label>
 
-    <button type="submit" style="padding: 12px 16px; font-size: 16px;">Najdi družbo</button>
-  </form>
+      <button type="submit" class="btn">Najdi družbo</button>
+    </form>
 
-  <p style="margin-top: 28px; font-size: 12px; opacity: 0.7;">
-    MVP: podatkov ne shranjujemo trajno. Če ni matcha, poskusi kasneje.
-  </p>
+    <div class="foot">
+      MVP • podatkov ne shranjujemo trajno • brez profilov
+    </div>
+  </div>
 </body>
 </html>
