@@ -3,9 +3,62 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import uuid
+import os
+import json
+import urllib.request
 
 WINDOW_MIN = 15
 EXPIRE_MIN = 90  # po koliko min request poteče
+
+# --- GA4 (Measurement Protocol) ---
+# Nastavi v Railway env vars:
+#   GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+#   GA4_API_SECRET=xxxxxxxxxxxxxxxx
+GA4_MEASUREMENT_ID = os.getenv("GA4_MEASUREMENT_ID", "").strip()
+GA4_API_SECRET = os.getenv("GA4_API_SECRET", "").strip()
+
+def _ga4_send_event(event_name: str, params: Dict[str, Any]) -> None:
+    """Best-effort pošlji dogodek v GA4 prek Measurement Protocol.
+
+    - Ne pošiljamo PII (npr. phone številk).
+    - Če ni konfiguracije ali če pride do napake, tiho ignoriramo.
+    """
+
+    if not GA4_MEASUREMENT_ID or not GA4_API_SECRET:
+        return
+
+    try:
+        url = (
+            "https://www.google-analytics.com/mp/collect"
+            f"?measurement_id={GA4_MEASUREMENT_ID}&api_secret={GA4_API_SECRET}"
+        )
+
+        payload = {
+            # client_id mora biti non-PII; uporabimo naključen UUID na dogodek
+            "client_id": uuid.uuid4().hex,
+            "events": [
+                {
+                    "name": event_name,
+                    "params": {
+                        **params,
+                        "engagement_time_msec": 1,
+                    },
+                }
+            ],
+        }
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=2) as _:
+            pass
+    except Exception:
+        # analytics je best-effort; nikoli ne sme podreti matchanja
+        return
 
 @dataclass
 class Request:
@@ -92,6 +145,10 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
                 waiting.remove(other_rid)
             except ValueError:
                 pass
+            _ga4_send_event(
+                "match_found",
+                {"city": req.city, "location": location, "time_bucket": req.time_bucket},
+            )
             return {
                 "status": "matched",
                 "rid": rid,
@@ -164,7 +221,6 @@ def add_request_with_pairs(
                 waiting.remove(other_rid)
             except ValueError:
                 pass
-
             paired[rid] = {
                 "other_phone": other.phone,
                 "city": city,
@@ -179,6 +235,14 @@ def add_request_with_pairs(
                 "when": when,
                 "time_bucket": req.time_bucket,
             }
+            _ga4_send_event(
+                "match_found",
+                {
+                    "city": city,
+                    "location": location,
+                    "time_bucket": req.time_bucket,
+                },
+            )
             return {"status": "matched", "rid": rid, **paired[rid]}
 
     waiting.append(rid)
