@@ -144,7 +144,7 @@
 <body>
   <div class="card">
     <h1>🍽️ BoniBuddy</h1>
-    <div class="subtitle">Najdi družbo za bone v Ljubljani — brez logina, v ~20 sekundah.</div>
+    <div class="subtitle">Najdi družbo za bone v Ljubljani ali Mariboru — brez logina, v ~20 sekundah.</div>
 
     {% if error %}
       <div class="error">{{ error }}</div>
@@ -169,11 +169,10 @@
       </div>
 
       <div class="field">
-        <label>Kdaj želiš jest?</label>
-        <select name="time_choice" required>
-          <option value="0">Zdaj</option>
-          <option value="30">Čez 30 min</option>
-          <option value="60">Čez 1 uro</option>
+        <label>Kdaj približno?</label>
+        <select name="time_bucket" required>
+          <option value="soon">Kmalu (v 1 uri)</option>
+          <option value="today">Danes</option>
         </select>
       </div>
 

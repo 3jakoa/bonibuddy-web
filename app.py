@@ -41,7 +41,7 @@ def index(request: Request):
 @app.post("/go", response_class=HTMLResponse)
 def go(
     request: Request,
-    time_choice: str = Form(...),
+    time_bucket: str = Form(...),
     city: str = Form(...),
     location: str = Form(...),
     match_pref: str = Form(...),
@@ -70,6 +70,12 @@ def go(
             {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna lokacija."},
         )
 
+    if time_bucket not in {"soon", "today"}:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna izbira časa."},
+        )
+
     if match_pref not in {"any", "female", "male"}:
         return templates.TemplateResponse(
             "index.html",
@@ -86,12 +92,13 @@ def go(
     if len(phone_n) < 8:
         return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Vpiši veljavno WhatsApp številko."})
 
-    offset = int(time_choice)
-    when = datetime.now() + timedelta(minutes=offset)
+    # Interno še vedno uporabljamo datetime za shranjevanje; UI prikazuje samo bucket (kmalu/danes).
+    when = datetime.now()
 
     res = engine.add_request_with_pairs(
         location=location,
         when=when,
+        time_bucket=time_bucket,
         phone=phone_n,
         match_pref=match_pref,
         gender=gender,
@@ -100,14 +107,14 @@ def go(
 
     if res["status"] == "matched":
         other = res["other_phone"]
-        msg = f"Hej! BoniBuddy naju je povezal za bone ({location}) okoli {when.strftime('%H:%M')}. Greva skupaj?"
+        msg = f"Hej! BoniBuddy naju je povezal za bone ({location}). Greva skupaj {'danes' if time_bucket == 'today' else 'kmalu'}?"
         return templates.TemplateResponse("matched.html", {
             "request": request,
             "location": location,
-            "when": when.strftime("%H:%M"),
             "other_phone": other,
             "wa_url": wa_link(other, msg),
             "city": city,
+            "time_bucket": time_bucket,
         })
 
     # waiting
@@ -115,8 +122,8 @@ def go(
         "request": request,
         "rid": res["rid"],
         "location": location,
-        "when": when.strftime("%H:%M"),
         "city": city,
+        "time_bucket": time_bucket,
     })
 
 @app.get("/status/{rid}")

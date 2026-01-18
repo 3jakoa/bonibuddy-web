@@ -136,14 +136,14 @@
 
     <div class="chips">
       <div class="chip">📍 <b>{{ location }}</b></div>
-      <div class="chip">🕒 <b>{{ when }}</b></div>
+      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
     <a class="btn" href="{{ wa_url }}">Odpri WhatsApp</a>
 
     <div class="box">
       <div class="label">Predlagano sporočilo</div>
-      Hej! BoniBuddy naju je povezal za bone ({{ location }}) okoli {{ when }}. Greva skupaj?
+      Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?
     </div>
 
     <div class="foot">MVP: delimo samo kontakt za ta match.</div>

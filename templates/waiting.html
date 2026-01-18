@@ -144,7 +144,7 @@
 
     <div class="chips">
       <div class="chip">📍 <b>{{ location }}</b></div>
-      <div class="chip">🕒 <b>{{ when }}</b></div>
+      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
     <div id="status" class="muted">Še ni matcha…</div>
@@ -163,7 +163,7 @@
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
 
-        const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}) okoli {{ when }}. Greva skupaj?`;
+        const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?`;
         const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
 
         // Replace status area with a primary button

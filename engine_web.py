@@ -13,6 +13,7 @@ class Request:
     created_at: datetime
     location: str
     when: datetime
+    time_bucket: str  # "soon" | "today"
     phone: str  # WhatsApp phone in E164-ish (npr 38640111222)
     city: str  # "ljubljana" | "maribor"
     gender: str  # "female" | "male"
@@ -66,6 +67,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
         created_at=datetime.now(),
         location=location,
         when=when,
+        time_bucket="soon",
         phone=phone,
         city="ljubljana",
         gender="male",
@@ -81,7 +83,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
         if (
             other.location == location
             and other.city == req.city
-            and _close_in_time(other.when, when)
+            and other.time_bucket == req.time_bucket
             and other.phone != phone
             and _mutual_pref(req, other)
         ):
@@ -129,7 +131,7 @@ def check_status(rid: str) -> Dict[str, Any]:
 paired: Dict[str, Dict[str, Any]] = {}
 
 def add_request_with_pairs(
-    *, city: str, location: str, when: datetime, phone: str, gender: str, match_pref: str
+    *, city: str, location: str, when: datetime, time_bucket: str = "soon", phone: str, gender: str, match_pref: str
 ) -> Dict[str, Any]:
     _cleanup()
 
@@ -139,6 +141,7 @@ def add_request_with_pairs(
         created_at=datetime.now(),
         location=location,
         when=when,
+        time_bucket=time_bucket,
         phone=phone,
         city=city,
         gender=gender,
@@ -153,7 +156,7 @@ def add_request_with_pairs(
         if (
             other.location == location
             and other.city == req.city
-            and _close_in_time(other.when, when)
+            and other.time_bucket == req.time_bucket
             and other.phone != phone
             and _mutual_pref(req, other)
         ):
@@ -162,12 +165,31 @@ def add_request_with_pairs(
             except ValueError:
                 pass
 
-            paired[rid] = {"other_phone": other.phone, "city": city, "location": location, "when": when}
-            paired[other_rid] = {"other_phone": phone, "city": city, "location": location, "when": when}
+            paired[rid] = {
+                "other_phone": other.phone,
+                "city": city,
+                "location": location,
+                "when": when,
+                "time_bucket": req.time_bucket,
+            }
+            paired[other_rid] = {
+                "other_phone": phone,
+                "city": city,
+                "location": location,
+                "when": when,
+                "time_bucket": req.time_bucket,
+            }
             return {"status": "matched", "rid": rid, **paired[rid]}
 
     waiting.append(rid)
-    return {"status": "waiting", "rid": rid, "city": city, "location": location, "when": when}
+    return {
+        "status": "waiting",
+        "rid": rid,
+        "city": city,
+        "location": location,
+        "when": when,
+        "time_bucket": req.time_bucket,
+    }
 
 def check_status_with_pairs(rid: str) -> Dict[str, Any]:
     _cleanup()
@@ -176,4 +198,11 @@ def check_status_with_pairs(rid: str) -> Dict[str, Any]:
     if rid not in requests:
         return {"status": "expired"}
     r = requests[rid]
-    return {"status": "waiting", "rid": rid, "city": r.city, "location": r.location, "when": r.when}
+    return {
+        "status": "waiting",
+        "rid": rid,
+        "city": r.city,
+        "location": r.location,
+        "when": r.when,
+        "time_bucket": r.time_bucket,
+    }
