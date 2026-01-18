@@ -14,6 +14,7 @@ class Request:
     location: str
     when: datetime
     phone: str  # WhatsApp phone in E164-ish (npr 38640111222)
+    city: str  # "ljubljana" | "maribor"
     gender: str  # "female" | "male"
     match_pref: str  # "any" | "female" | "male"
 # Helper for mutual match preference
@@ -46,6 +47,10 @@ def _cleanup() -> None:
     alive = [rid for rid in waiting if rid in requests]
     waiting.clear()
     waiting.extend(alive)
+    # počisti paired (da ne ostanejo "ghost" matchi)
+    for rid in list(paired.keys()):
+        if rid not in requests:
+            paired.pop(rid, None)
 
 
 def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
@@ -62,6 +67,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
         location=location,
         when=when,
         phone=phone,
+        city="ljubljana",
         gender="male",
         match_pref="any",
     )
@@ -74,6 +80,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
             continue
         if (
             other.location == location
+            and other.city == req.city
             and _close_in_time(other.when, when)
             and other.phone != phone
             and _mutual_pref(req, other)
@@ -122,7 +129,7 @@ def check_status(rid: str) -> Dict[str, Any]:
 paired: Dict[str, Dict[str, Any]] = {}
 
 def add_request_with_pairs(
-    *, location: str, when: datetime, phone: str, gender: str, match_pref: str
+    *, city: str, location: str, when: datetime, phone: str, gender: str, match_pref: str
 ) -> Dict[str, Any]:
     _cleanup()
 
@@ -133,6 +140,7 @@ def add_request_with_pairs(
         location=location,
         when=when,
         phone=phone,
+        city=city,
         gender=gender,
         match_pref=match_pref,
     )
@@ -144,6 +152,7 @@ def add_request_with_pairs(
             continue
         if (
             other.location == location
+            and other.city == req.city
             and _close_in_time(other.when, when)
             and other.phone != phone
             and _mutual_pref(req, other)
@@ -153,12 +162,12 @@ def add_request_with_pairs(
             except ValueError:
                 pass
 
-            paired[rid] = {"other_phone": other.phone, "location": location, "when": when}
-            paired[other_rid] = {"other_phone": phone, "location": location, "when": when}
+            paired[rid] = {"other_phone": other.phone, "city": city, "location": location, "when": when}
+            paired[other_rid] = {"other_phone": phone, "city": city, "location": location, "when": when}
             return {"status": "matched", "rid": rid, **paired[rid]}
 
     waiting.append(rid)
-    return {"status": "waiting", "rid": rid, "location": location, "when": when}
+    return {"status": "waiting", "rid": rid, "city": city, "location": location, "when": when}
 
 def check_status_with_pairs(rid: str) -> Dict[str, Any]:
     _cleanup()
@@ -167,4 +176,4 @@ def check_status_with_pairs(rid: str) -> Dict[str, Any]:
     if rid not in requests:
         return {"status": "expired"}
     r = requests[rid]
-    return {"status": "waiting", "rid": rid, "location": r.location, "when": r.when}
+    return {"status": "waiting", "rid": rid, "city": r.city, "location": r.location, "when": r.when}
