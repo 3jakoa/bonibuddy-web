@@ -37,6 +37,8 @@ def go(
     request: Request,
     time_choice: str = Form(...),
     location: str = Form(...),
+    match_pref: str = Form(...),
+    gender: str = Form(...),
     phone: str = Form(...),
     consent: str = Form(None),
 ):
@@ -50,6 +52,18 @@ def go(
     if location not in LOCATIONS:
         return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS, "error": "Neveljavna lokacija."})
 
+    if match_pref not in {"any", "female", "male"}:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "locations": LOCATIONS, "error": "Neveljavna izbira preference."},
+        )
+
+    if gender not in {"female", "male"}:
+        return templates.TemplateResponse(
+            "index.html",
+            {"request": request, "locations": LOCATIONS, "error": "Neveljavna izbira spola."},
+        )
+
     phone_n = normalize_phone(phone)
     if len(phone_n) < 8:
         return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS, "error": "Vpiši veljavno WhatsApp številko."})
@@ -57,7 +71,13 @@ def go(
     offset = int(time_choice)
     when = datetime.now() + timedelta(minutes=offset)
 
-    res = engine.add_request_with_pairs(location=location, when=when, phone=phone_n)
+    res = engine.add_request_with_pairs(
+        location=location,
+        when=when,
+        phone=phone_n,
+        match_pref=match_pref,
+        gender=gender,
+    )
 
     if res["status"] == "matched":
         other = res["other_phone"]

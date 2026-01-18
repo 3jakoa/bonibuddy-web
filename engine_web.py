@@ -14,6 +14,16 @@ class Request:
     location: str
     when: datetime
     phone: str  # WhatsApp phone in E164-ish (npr 38640111222)
+    gender: str  # "female" | "male"
+    match_pref: str  # "any" | "female" | "male"
+# Helper for mutual match preference
+def _mutual_pref(a: Request, b: Request) -> bool:
+    """Return True if both users' preferences are satisfied."""
+
+    def wants(x: Request, y: Request) -> bool:
+        return x.match_pref == "any" or x.match_pref == y.gender
+
+    return wants(a, b) and wants(b, a)
 
 # rid -> Request
 requests: Dict[str, Request] = {}
@@ -46,7 +56,15 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
     _cleanup()
 
     rid = uuid.uuid4().hex[:10]
-    req = Request(rid=rid, created_at=datetime.now(), location=location, when=when, phone=phone)
+    req = Request(
+        rid=rid,
+        created_at=datetime.now(),
+        location=location,
+        when=when,
+        phone=phone,
+        gender="male",
+        match_pref="any",
+    )
     requests[rid] = req
 
     # najdi match med waiting
@@ -54,7 +72,12 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
         other = requests.get(other_rid)
         if not other:
             continue
-        if other.location == location and _close_in_time(other.when, when) and other.phone != phone:
+        if (
+            other.location == location
+            and _close_in_time(other.when, when)
+            and other.phone != phone
+            and _mutual_pref(req, other)
+        ):
             # match found: odstrani other iz waiting, tudi novega ne dodajamo
             try:
                 waiting.remove(other_rid)
@@ -98,18 +121,33 @@ def check_status(rid: str) -> Dict[str, Any]:
 # rid -> other_phone
 paired: Dict[str, Dict[str, Any]] = {}
 
-def add_request_with_pairs(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
+def add_request_with_pairs(
+    *, location: str, when: datetime, phone: str, gender: str, match_pref: str
+) -> Dict[str, Any]:
     _cleanup()
 
     rid = uuid.uuid4().hex[:10]
-    req = Request(rid=rid, created_at=datetime.now(), location=location, when=when, phone=phone)
+    req = Request(
+        rid=rid,
+        created_at=datetime.now(),
+        location=location,
+        when=when,
+        phone=phone,
+        gender=gender,
+        match_pref=match_pref,
+    )
     requests[rid] = req
 
     for other_rid in list(waiting):
         other = requests.get(other_rid)
         if not other:
             continue
-        if other.location == location and _close_in_time(other.when, when) and other.phone != phone:
+        if (
+            other.location == location
+            and _close_in_time(other.when, when)
+            and other.phone != phone
+            and _mutual_pref(req, other)
+        ):
             try:
                 waiting.remove(other_rid)
             except ValueError:
