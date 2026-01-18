@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Čakam…</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family: system-ui; max-width: 520px; margin: 40px auto; padding: 0 16px;">
+  <h2>⏳ Iščemo družbo…</h2>
+  <p>Lokacija: <b>{{ location }}</b><br>Čas: <b>{{ when }}</b></p>
+
+  <p id="status">Še ni matcha. Stran se osvežuje…</p>
+
+  <script>
+    async function poll() {
+      const res = await fetch(`/status/{{ rid }}`);
+      const data = await res.json();
+      if (data.status === "matched") {
+        // redirect to matched page is simplest, but we don't have server-side session.
+        // We'll just show a link.
+        const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}) okoli {{ when }}. Greva skupaj?`;
+        const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
+        document.getElementById("status").innerHTML =
+          `✅ Našli smo match! <a href="${wa}">Odpri WhatsApp</a>`;
+        return;
+      }
+      if (data.status === "expired") {
+        document.getElementById("status").innerText = "Request je potekel. Poskusi še enkrat na začetni strani.";
+        return;
+      }
+      setTimeout(poll, 3000);
+    }
+    poll();
+  </script>
+
+  <p style="margin-top: 18px;"><a href="/">Nazaj</a></p>
+</body>
+</html>
