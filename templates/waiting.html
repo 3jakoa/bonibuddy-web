@@ -156,7 +156,13 @@
       <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
+
     <div id="status" class="muted">Še ni matcha…</div>
+
+    <div class="row" id="notifRow" style="display:none;">
+      <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
+      <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
+    </div>
 
     <div class="row">
       <a class="link" href="/">Nazaj</a>
@@ -164,6 +170,106 @@
   </div>
 
   <script>
+    const RID = "{{ rid }}";
+
+    function notificationsSupported() {
+      return ('Notification' in window);
+    }
+
+    function pushSupported() {
+      return ('serviceWorker' in navigator) && ('PushManager' in window);
+    }
+
+    function updateNotifUI() {
+      const row = document.getElementById('notifRow');
+      const hint = document.getElementById('notifHint');
+      const btn = document.getElementById('enableNotifBtn');
+      if (!row || !hint || !btn) return;
+
+      if (!notificationsSupported()) {
+        row.style.display = 'none';
+        return;
+      }
+
+      row.style.display = 'block';
+
+      if (Notification.permission === 'granted') {
+        btn.style.display = 'none';
+        hint.textContent = 'Obvestila so vključena ✅';
+      } else if (Notification.permission === 'denied') {
+        btn.style.display = 'none';
+        hint.textContent = 'Obvestila so blokirana v nastavitvah brskalnika.';
+      } else {
+        btn.style.display = 'inline-block';
+        hint.textContent = 'Klikni, da ti lahko pošljem obvestilo, ko najdem match.';
+      }
+    }
+
+    async function bestEffortSubscribePush() {
+      // Best-effort: requires backend + VAPID public key. We won't break anything if unavailable.
+      try {
+        if (!pushSupported() || Notification.permission !== 'granted') return;
+
+        const reg = await navigator.serviceWorker.ready;
+
+        // Expect the VAPID public key to be provided on the page later.
+        // If it's missing, we simply skip push subscription for now.
+        const vapidPublicKey = window.VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey || typeof vapidPublicKey !== 'string') return;
+
+        // Convert base64url to Uint8Array
+        const padding = '='.repeat((4 - (vapidPublicKey.length % 4)) % 4);
+        const base64 = (vapidPublicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        const key = new Uint8Array([...raw].map(ch => ch.charCodeAt(0)));
+
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key
+        });
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rid: RID, subscription })
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    async function enableNotifications() {
+      try {
+        if (!notificationsSupported()) return;
+        const perm = await Notification.requestPermission();
+        updateNotifUI();
+        if (perm === 'granted') {
+          // Optionally create a test notification so user knows it works
+          try {
+            new Notification('BoniBuddy', { body: 'Obvestila so vključena. Sporočim, ko najdem match.' });
+          } catch (e) {
+            // ignore
+          }
+          // Best-effort: also try to subscribe for push if configured
+          await bestEffortSubscribePush();
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // wire button
+    const enableBtn = document.getElementById('enableNotifBtn');
+    if (enableBtn) {
+      enableBtn.addEventListener('click', () => {
+        // analytics (optional)
+        try { gtag('event', 'enable_notifications'); } catch (e) {}
+        enableNotifications();
+      });
+    }
+
+    updateNotifUI();
+
     async function poll() {
       const res = await fetch(`/status/{{ rid }}`);
       const data = await res.json();
@@ -171,6 +277,17 @@
       if (data.status === "matched") {
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
+
+        // Best-effort local notification (works when app is open)
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('BoniBuddy', {
+              body: 'Našli smo družbo! Odpri app in klikni za WhatsApp.'
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
 
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?`;
         const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
