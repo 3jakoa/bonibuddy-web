@@ -4,9 +4,9 @@
 const CACHE_NAME = 'bonibuddy-v1';
 const ASSETS_TO_CACHE = [
   '/',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/static/manifest.webmanifest',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png'
 ];
 
 // Install: cache core assets
