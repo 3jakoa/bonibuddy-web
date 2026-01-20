@@ -1,14 +1,23 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from datetime import datetime, timedelta
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+from datetime import datetime
 import re
 import urllib.parse
 
 import engine_web as engine
 
+BASE_DIR = Path(__file__).resolve().parent
+
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+
+# Use absolute paths so it works reliably on Railway
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Serve static assets under /static
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 LOCATIONS_BY_CITY = {
     "ljubljana": ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"],
@@ -30,6 +39,31 @@ def normalize_phone(raw: str) -> str:
 def wa_link(phone: str, text: str) -> str:
     q = urllib.parse.quote(text)
     return f"https://wa.me/{phone}?text={q}"
+
+# --- PWA convenience routes (some browsers request these at the root) ---
+@app.get("/manifest.webmanifest")
+def pwa_manifest_root():
+    return RedirectResponse(url="/static/manifest.webmanifest")
+
+@app.get("/sw.js")
+def pwa_sw_root():
+    return RedirectResponse(url="/static/sw.js")
+
+@app.get("/icons/{path:path}")
+def pwa_icons_root(path: str):
+    return RedirectResponse(url=f"/static/icons/{path}")
+
+@app.get("/apple-touch-icon.png")
+def pwa_apple_touch_icon_root():
+    return RedirectResponse(url="/static/icons/icon-192.png")
+
+@app.get("/apple-touch-icon-120x120.png")
+def pwa_apple_touch_icon_120():
+    return RedirectResponse(url="/static/icons/icon-192.png")
+
+@app.get("/apple-touch-icon-120x120-precomposed.png")
+def pwa_apple_touch_icon_120_precomposed():
+    return RedirectResponse(url="/static/icons/icon-192.png")
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
