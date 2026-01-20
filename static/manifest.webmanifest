@@ -1,0 +1,23 @@
+{
+  "name": "BoniBuddy",
+  "short_name": "BoniBuddy",
+  "description": "Najdi družbo za bone v Ljubljani ali Mariboru – brez login-a, hitro in preprosto.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "sl",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
