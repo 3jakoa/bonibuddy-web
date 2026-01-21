@@ -33,6 +33,13 @@ class PushSubscribeIn(BaseModel):
     rid: str
     subscription: dict
 
+# Minimal sanity-test endpoint for web push
+class PushTestIn(BaseModel):
+    rid: str
+    title: str | None = None
+    body: str | None = None
+    url: str | None = None
+
 
 @app.post("/api/push/subscribe")
 def push_subscribe(body: PushSubscribeIn):
@@ -46,6 +53,22 @@ def push_subscribe(body: PushSubscribeIn):
 
     engine.set_push_subscription(rid, sub)
     return {"ok": True}
+
+# Minimal sanity-test endpoint for web push
+@app.post("/api/push/test")
+def push_test(body: PushTestIn):
+    rid = (body.rid or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="Missing rid")
+
+    payload = {
+        "title": body.title or "BoniBuddy test",
+        "body": body.body or "Če vidiš to, push dela 🎉",
+        "url": body.url or "/",
+    }
+
+    ok = send_push_to_rid(rid, payload)
+    return {"ok": bool(ok)}
 
 # Use absolute paths so it works reliably on Railway
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
