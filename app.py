@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -81,7 +81,11 @@ def pwa_manifest_root():
 
 @app.get("/sw.js")
 def pwa_sw_root():
-    return RedirectResponse(url="/static/sw.js")
+    # Serve the SW script from the root so it can control scope '/'
+    return FileResponse(
+        path=str(BASE_DIR / "static" / "sw.js"),
+        media_type="application/javascript",
+    )
 
 @app.get("/icons/{path:path}")
 def pwa_icons_root(path: str):

@@ -217,8 +217,8 @@
     async function ensureServiceWorkerRegistered() {
       try {
         if (!('serviceWorker' in navigator)) return;
-        // Register with an absolute path so it works from /go, /waiting, etc.
-        await navigator.serviceWorker.register('/static/sw.js');
+        // Register at root scope so SW scope is '/'.
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
       } catch (e) {
         // ignore
       }
