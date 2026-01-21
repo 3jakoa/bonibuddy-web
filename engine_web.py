@@ -6,6 +6,7 @@ import uuid
 import os
 import json
 import urllib.request
+import logging
 
 # --- Web Push (VAPID) ---
 # Configure via Railway env vars:
@@ -13,6 +14,8 @@ import urllib.request
 #   VAPID_SUBJECT (e.g. "mailto:hello@bonibuddy.app" or "https://bonibuddy.app")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
 VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "").strip()
+
+logger = logging.getLogger("bonibuddy.push")
 
 # rid -> PushSubscription JSON (as received from the browser)
 PUSH_SUBSCRIPTIONS: Dict[str, Dict[str, Any]] = {}
@@ -24,6 +27,7 @@ def set_push_subscription(rid: str, subscription: Dict[str, Any]) -> None:
         return
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
         return
+    logger.info("push_subscribed rid=%s", rid)
     PUSH_SUBSCRIPTIONS[rid] = subscription
 
 
@@ -31,13 +35,16 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
     """Best-effort send a web push notification to the stored subscription for rid."""
     sub = PUSH_SUBSCRIPTIONS.get(rid)
     if not sub:
+        logger.info("push_skip no_subscription rid=%s", rid)
         return False
     if not (VAPID_PRIVATE_KEY and VAPID_SUBJECT):
+        logger.info("push_skip missing_vapid rid=%s", rid)
         return False
 
     try:
         from pywebpush import webpush  # type: ignore
-    except Exception:
+    except Exception as e:
+        logger.exception("push_skip pywebpush_import_failed rid=%s", rid)
         return False
 
     try:
@@ -47,9 +54,11 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims={"sub": VAPID_SUBJECT},
         )
+        logger.info("push_sent rid=%s", rid)
         return True
-    except Exception:
+    except Exception as e:
         # Never break matching flow.
+        logger.exception("push_failed rid=%s", rid)
         return False
 
 WINDOW_MIN = 15
@@ -286,6 +295,7 @@ def add_request_with_pairs(
                 "body": "Našli smo družbo! Odpri app in klikni za WhatsApp.",
                 "url": "/",
             }
+            logger.info("match_push_attempt rid=%s other_rid=%s", rid, other_rid)
             send_push_to_rid(rid, payload)
             send_push_to_rid(other_rid, payload)
             _ga4_send_event(
