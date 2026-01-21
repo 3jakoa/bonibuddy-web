@@ -15,10 +15,6 @@ BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI()
 
-# --- Push subscriptions (MVP: in-memory, resets on deploy) ---
-# rid -> subscription JSON (as received from the browser)
-PUSH_SUBSCRIPTIONS: dict[str, dict] = {}
-
 
 def _get_env(name: str) -> str:
     v = os.getenv(name, "").strip()
@@ -26,35 +22,10 @@ def _get_env(name: str) -> str:
 
 
 def send_push_to_rid(rid: str, payload: dict) -> bool:
-    """Best-effort push sender. Returns True if a push was attempted."""
-    sub = PUSH_SUBSCRIPTIONS.get(rid)
-    if not sub:
-        return False
-
-    vapid_private = _get_env("VAPID_PRIVATE_KEY")
-    vapid_public = _get_env("VAPID_PUBLIC_KEY")
-    vapid_subject = _get_env("VAPID_SUBJECT")
-
-    # If VAPID is not configured, skip.
-    if not (vapid_private and vapid_public and vapid_subject):
-        return False
-
+    """Compatibility wrapper: delegate to engine (engine_web.py)."""
     try:
-        from pywebpush import webpush  # type: ignore
+        return bool(engine.send_push_to_rid(rid, payload))
     except Exception:
-        # Dependency not installed yet.
-        return False
-
-    try:
-        webpush(
-            subscription_info=sub,
-            data=__import__("json").dumps(payload),
-            vapid_private_key=vapid_private,
-            vapid_claims={"sub": vapid_subject},
-        )
-        return True
-    except Exception:
-        # Best-effort for MVP; don't crash user flows.
         return False
 
 
@@ -73,7 +44,7 @@ def push_subscribe(body: PushSubscribeIn):
     if not isinstance(sub, dict) or not sub.get("endpoint"):
         raise HTTPException(status_code=400, detail="Invalid subscription")
 
-    PUSH_SUBSCRIPTIONS[rid] = sub
+    engine.set_push_subscription(rid, sub)
     return {"ok": True}
 
 # Use absolute paths so it works reliably on Railway

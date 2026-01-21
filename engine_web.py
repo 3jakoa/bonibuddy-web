@@ -7,6 +7,51 @@ import os
 import json
 import urllib.request
 
+# --- Web Push (VAPID) ---
+# Configure via Railway env vars:
+#   VAPID_PRIVATE_KEY
+#   VAPID_SUBJECT (e.g. "mailto:hello@bonibuddy.app" or "https://bonibuddy.app")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "").strip()
+
+# rid -> PushSubscription JSON (as received from the browser)
+PUSH_SUBSCRIPTIONS: Dict[str, Dict[str, Any]] = {}
+
+
+def set_push_subscription(rid: str, subscription: Dict[str, Any]) -> None:
+    """Store/replace a push subscription for this rid (MVP: in-memory)."""
+    if not rid:
+        return
+    if not isinstance(subscription, dict) or not subscription.get("endpoint"):
+        return
+    PUSH_SUBSCRIPTIONS[rid] = subscription
+
+
+def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
+    """Best-effort send a web push notification to the stored subscription for rid."""
+    sub = PUSH_SUBSCRIPTIONS.get(rid)
+    if not sub:
+        return False
+    if not (VAPID_PRIVATE_KEY and VAPID_SUBJECT):
+        return False
+
+    try:
+        from pywebpush import webpush  # type: ignore
+    except Exception:
+        return False
+
+    try:
+        webpush(
+            subscription_info=sub,
+            data=json.dumps(payload),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": VAPID_SUBJECT},
+        )
+        return True
+    except Exception:
+        # Never break matching flow.
+        return False
+
 WINDOW_MIN = 15
 EXPIRE_MIN = 90  # po koliko min request poteče
 
@@ -235,6 +280,14 @@ def add_request_with_pairs(
                 "when": when,
                 "time_bucket": req.time_bucket,
             }
+            # Best-effort web push (no PII in payload)
+            payload = {
+                "title": "BoniBuddy",
+                "body": "Našli smo družbo! Odpri app in klikni za WhatsApp.",
+                "url": "/",
+            }
+            send_push_to_rid(rid, payload)
+            send_push_to_rid(other_rid, payload)
             _ga4_send_event(
                 "match_found",
                 {
