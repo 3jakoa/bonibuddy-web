@@ -43,7 +43,7 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
 
     try:
         from pywebpush import webpush  # type: ignore
-    except Exception as e:
+    except Exception:
         logger.exception("push_skip pywebpush_import_failed rid=%s", rid)
         return False
 
@@ -53,10 +53,11 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
             data=json.dumps(payload),
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims={"sub": VAPID_SUBJECT},
+            timeout=10,
         )
         logger.info("push_sent rid=%s", rid)
         return True
-    except Exception as e:
+    except Exception:
         # Never break matching flow.
         logger.exception("push_failed rid=%s", rid)
         return False
