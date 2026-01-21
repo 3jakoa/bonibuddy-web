@@ -48,6 +48,18 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
         return False
 
     try:
+        # Workaround for a known incompatibility where some versions of pywebpush
+        # call `ec.generate_private_key(ec.SECP256R1, ...)` using the curve *class*
+        # instead of an instance, which newer cryptography rejects.
+        try:
+            from cryptography.hazmat.primitives.asymmetric import ec as _ec  # type: ignore
+
+            if isinstance(getattr(_ec, "SECP256R1", None), type):
+                _ec.SECP256R1 = _ec.SECP256R1()  # type: ignore
+        except Exception:
+            # Best-effort; if cryptography isn't available or patching fails, continue.
+            pass
+
         webpush(
             subscription_info=sub,
             data=json.dumps(payload),
@@ -57,6 +69,22 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
         )
         logger.info("push_sent rid=%s", rid)
         return True
+    except TypeError:
+        # Fallback: send a payload-less push (no encryption step) so users still
+        # get notified even if the library stack is mismatched.
+        try:
+            webpush(
+                subscription_info=sub,
+                data=None,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": VAPID_SUBJECT},
+                timeout=10,
+            )
+            logger.info("push_sent_no_payload rid=%s", rid)
+            return True
+        except Exception:
+            logger.exception("push_failed rid=%s", rid)
+            return False
     except Exception:
         # Never break matching flow.
         logger.exception("push_failed rid=%s", rid)
