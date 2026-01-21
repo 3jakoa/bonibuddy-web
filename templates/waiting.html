@@ -195,6 +195,13 @@
 
       row.style.display = 'block';
 
+      // If push isn't supported in this context/device, explain it
+      if (!pushSupported()) {
+        btn.style.display = 'none';
+        hint.textContent = 'Push obvestila niso podprta v tem brskalniku/na tej napravi.';
+        return;
+      }
+
       if (Notification.permission === 'granted') {
         btn.style.display = 'none';
         hint.textContent = 'Obvestila so vključena ✅';
@@ -207,12 +214,34 @@
       }
     }
 
+    async function ensureServiceWorkerRegistered() {
+      try {
+        if (!('serviceWorker' in navigator)) return;
+        // Register with an absolute path so it works from /go, /waiting, etc.
+        await navigator.serviceWorker.register('/static/sw.js');
+      } catch (e) {
+        // ignore
+      }
+    }
+
     async function bestEffortSubscribePush() {
       // Best-effort: requires backend + VAPID public key. We won't break anything if unavailable.
       try {
+        await ensureServiceWorkerRegistered();
         if (!pushSupported() || Notification.permission !== 'granted') return;
 
         const reg = await navigator.serviceWorker.ready;
+
+        // If already subscribed, just ensure backend knows about it.
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rid: RID, subscription: existing })
+          });
+          return;
+        }
 
         // Expect the VAPID public key to be provided on the page later.
         // If it's missing, we simply skip push subscription for now.
@@ -271,6 +300,17 @@
     }
 
     updateNotifUI();
+
+    // If the user already granted notifications earlier, auto-subscribe for push.
+    (async () => {
+      try {
+        if (notificationsSupported() && pushSupported() && Notification.permission === 'granted') {
+          await bestEffortSubscribePush();
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
 
     async function poll() {
       const res = await fetch(`/status/{{ rid }}`);
