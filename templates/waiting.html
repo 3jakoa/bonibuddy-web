@@ -171,6 +171,8 @@
 
   <script>
     const RID = "{{ rid }}";
+    // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
+    window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
 
     function notificationsSupported() {
       return ('Notification' in window);
