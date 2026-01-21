@@ -1,5 +1,3 @@
-
-
 // BoniBuddy Service Worker (minimal PWA)
 const CACHE_NAME = 'bonibuddy-v1';
 const ASSETS_TO_CACHE = [
@@ -49,7 +47,14 @@ self.addEventListener('push', event => {
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-192.png',
     data: {
-      url: data.url || '/',
+      url: (() => {
+        const raw = data.url || '/';
+        try {
+          return new URL(raw, self.location.origin).href;
+        } catch (e) {
+          return new URL('/', self.location.origin).href;
+        }
+      })(),
     }
   };
 
@@ -60,17 +65,38 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = event.notification.data && event.notification.data.url
-    ? event.notification.data.url
-    : '/';
+  const targetUrl = (() => {
+    const raw = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+    try {
+      return new URL(raw, self.location.origin).href;
+    } catch (e) {
+      return new URL('/', self.location.origin).href;
+    }
+  })();
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
+      const target = new URL(targetUrl);
+
+      // Prefer an existing window on the same origin.
+      const sameOrigin = clientList.filter(c => {
+        try { return new URL(c.url).origin === target.origin; } catch (e) { return false; }
+      });
+
+      // Prefer a window whose URL starts with the target path.
+      const preferred = sameOrigin.find(c => {
+        try {
+          const u = new URL(c.url);
+          return u.pathname === target.pathname || u.pathname.startsWith(target.pathname);
+        } catch (e) {
+          return false;
         }
+      }) || sameOrigin[0];
+
+      if (preferred && 'focus' in preferred) {
+        return preferred.focus();
       }
+
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
