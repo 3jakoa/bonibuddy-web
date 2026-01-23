@@ -73,7 +73,7 @@
       margin-bottom: 6px;
     }
 
-    select, input[type="tel"]{
+    select, input[type="text"]{
       width: 100%;
       padding: 12px 12px;
       border-radius: 12px;
@@ -131,19 +131,6 @@
       color: var(--muted);
       text-align: center;
     }
-
-    .city-btn{
-      flex:1;
-      padding:10px 12px;
-      font-size:14px;
-      background: rgba(255,255,255,0.08);
-      color: var(--text);
-    }
-
-    .city-btn.active{
-      background: linear-gradient(135deg, #6aa6ff, #7dd3a8);
-      color:#081018;
-    }
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -166,14 +153,6 @@
       <div class="error">{{ error }}</div>
     {% endif %}
 
-    <div class="field" style="margin-bottom:16px;">
-      <label>Mesto</label>
-      <div id="city-toggle" style="display:flex; gap:10px;">
-        <button type="button" class="btn city-btn active" data-city="ljubljana">Ljubljana</button>
-        <button type="button" class="btn city-btn" data-city="maribor">Maribor</button>
-      </div>
-    </div>
-
     <form method="post" action="/go" onsubmit="gtag('event','submit_form');">
       <input type="hidden" name="city" id="city" value="ljubljana">
       <div class="field">
@@ -193,7 +172,7 @@
       </div>
 
       <div class="field">
-        <label>Kje?</label>
+        <label>Lokacija (ljubljanski študentski domovi)</label>
         <select name="location" id="location" required></select>
       </div>
 
@@ -208,13 +187,13 @@
 
 
       <div class="field">
-        <label>WhatsApp številka</label>
-        <input name="phone" type="tel" placeholder="+38640111222" required>
+        <label>Instagram uporabniško ime</label>
+        <input name="instagram_username" type="text" placeholder="primer: boni.buddy" required>
       </div>
 
       <label class="consent">
         <input type="checkbox" name="consent" value="yes" required>
-        <span>Strinjam se, da se moja številka deli samo ob uspešnem matchu.</span>
+        <span>Strinjam se, da se moj Instagram deli samo ob uspešnem matchu.</span>
       </label>
 
       <button type="submit" class="btn">Najdi družbo</button>
@@ -234,37 +213,26 @@
   }
 </script>
 <script>
-  const LOCATIONS = {
-    ljubljana: ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"],
-    maribor: ["Center", "Tabor", "Studenci", "Drugo"],
-  };
+  const DORMS = [
+    { value: "rozna", label: "Rožna dolina" },
+    { value: "kardeljeva", label: "Kardeljeva ploščad" },
+    { value: "center", label: "Center" },
+  ];
 
-  const cityInput = document.getElementById("city");
   const locationSelect = document.getElementById("location");
-  const buttons = document.querySelectorAll(".city-btn");
 
-  function renderLocations(city){
+  function renderLocations(){
     locationSelect.innerHTML = "";
-    LOCATIONS[city].forEach(l => {
+    DORMS.forEach(l => {
       const opt = document.createElement("option");
-      opt.value = l;
-      opt.textContent = l;
+      opt.value = l.value;
+      opt.textContent = l.label;
       locationSelect.appendChild(opt);
     });
   }
 
-  buttons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      buttons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const city = btn.dataset.city;
-      cityInput.value = city;
-      renderLocations(city);
-    });
-  });
-
   // init
-  renderLocations("ljubljana");
+  renderLocations();
 </script>
 </body>
 </html>

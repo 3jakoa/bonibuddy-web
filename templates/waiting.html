@@ -324,20 +324,37 @@
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('BoniBuddy', {
-              body: 'Našli smo družbo! Odpri app in klikni za WhatsApp.'
+              body: 'Našli smo družbo! Odpri app in pošlji sporočilo na Instagram.'
             });
           }
         } catch (e) {
           // ignore
         }
 
+        const handle = data.other_instagram;
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?`;
-        const wa = `https://wa.me/${data.other_phone}?text=${encodeURIComponent(msg)}`;
+        const ig = handle ? `https://instagram.com/${encodeURIComponent(handle)}` : null;
 
-        // Replace status area with a primary button
-        document.getElementById("status").innerHTML =
+        // Replace status area with Instagram info and actions
+        const statusEl = document.getElementById("status");
+        statusEl.innerHTML =
           `<div style="margin: 14px 0 10px;" class="muted">Klikni spodaj in pošlji prvo sporočilo.</div>` +
-          `<a class="btn" href="${wa}">Odpri WhatsApp</a>`;
+          (handle ? `<div style="margin-bottom:10px; font-weight:600;">@${handle}</div>` : "") +
+          (ig ? `<a class="btn" href="${ig}" target="_blank" rel="noopener">Odpri Instagram profil</a>` : "") +
+          `<button class="btn" type="button" id="copyMsgBtn" style="margin-top:10px; background: rgba(255,255,255,0.08); color: var(--text); border:1px solid var(--border);">Kopiraj sporočilo</button>`;
+
+        const copyBtn = document.getElementById("copyMsgBtn");
+        if (copyBtn) {
+          copyBtn.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(msg);
+              copyBtn.textContent = "Skopirano ✓";
+              setTimeout(() => { copyBtn.textContent = "Kopiraj sporočilo"; }, 1800);
+            } catch (e) {
+              copyBtn.textContent = "Ni šlo, kopiraj ročno";
+            }
+          });
+        }
         return;
       }
 

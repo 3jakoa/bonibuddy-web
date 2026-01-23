@@ -127,6 +127,45 @@
     }
 
     .link:hover{ text-decoration: underline; }
+
+    .handle{
+      font-size: 15px;
+      font-weight: 600;
+      margin: 4px 0 2px;
+    }
+
+    .message-row{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .message-text{
+      flex: 1;
+      line-height: 1.4;
+    }
+
+    .icon-btn{
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+    }
+
+    .icon-btn:active{ transform: scale(0.96); }
+
+    .copy-hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 16px;
+    }
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -148,16 +187,57 @@
       <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
-    <a class="btn" href="{{ wa_url }}" onclick="gtag('event','click_whatsapp');">Odpri WhatsApp</a>
-
     <div class="box">
-      <div class="label">Predlagano sporočilo</div>
-      Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?
+      <div class="label">Instagram uporabnik</div>
+      <div class="handle">@{{ match_instagram }}</div>
     </div>
+
+    <div class="box" id="message-box">
+      <div class="label" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span>Predlagano sporočilo</span>
+        <button type="button" class="icon-btn" id="copy-btn" aria-label="Kopiraj sporočilo">📋</button>
+      </div>
+      <div class="message-row">
+        <div class="message-text" id="message-text"></div>
+      </div>
+      <div class="copy-hint" id="copy-hint"></div>
+    </div>
+
+    <a class="btn" id="ig-link" href="https://instagram.com/{{ match_instagram }}" target="_blank" rel="noopener" onclick="gtag('event','open_instagram');">Odpri Instagram profil</a>
 
     <div class="foot">MVP: delimo samo kontakt za ta match.</div>
 
     <a class="link" href="/">Išči znova</a>
   </div>
+<script>
+  const rawHandle = "{{ match_instagram }}".trim();
+  const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
+  const locationLabel = "{{ location }}";
+  const timeLabel = "{% if time_bucket == 'today' %}danes{% else %}kmalu{% endif %}";
+  const message = `Hej! Matchala sva se na BoniBuddy (@${handle}) za ${locationLabel} (${timeLabel}). Greva na bone?`;
+
+  const messageEl = document.getElementById("message-text");
+  if (messageEl) messageEl.textContent = message;
+
+  const igLink = document.getElementById("ig-link");
+  if (igLink) igLink.href = `https://instagram.com/${encodeURIComponent(handle)}`;
+
+  const copyBtn = document.getElementById("copy-btn");
+  const hint = document.getElementById("copy-hint");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(message);
+        if (hint) {
+          hint.textContent = "Kopirano ✅";
+          setTimeout(() => { hint.textContent = ""; }, 1500);
+        }
+        gtag('event','copy_message');
+      } catch (e) {
+        if (hint) hint.textContent = "Ni šlo, kopiraj ročno";
+      }
+    });
+  }
+</script>
 </body>
 </html>
