@@ -74,9 +74,14 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 # Serve static assets under /static
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
+LOCATION_LABELS = {
+    "rozna": "Rožna dolina",
+    "kardeljeva": "Kardeljeva ploščad",
+    "center": "Center",
+}
 LOCATIONS_BY_CITY = {
-    "ljubljana": ["Center", "Rožna", "Bežigrad", "Šiška", "Vič", "Drugo"],
-    "maribor": ["Center", "Tabor", "Studenci", "Drugo"],
+    "ljubljana": list(LOCATION_LABELS.keys()),
+    "maribor": list(LOCATION_LABELS.keys()),
 }
 
 def normalize_instagram(raw: str) -> str:
@@ -192,7 +197,7 @@ def go(
     if res["status"] == "matched":
         return templates.TemplateResponse("matched.html", {
             "request": request,
-            "location": location,
+            "location": LOCATION_LABELS.get(location, location),
             "match_instagram": res["other_instagram"],
             "city": city,
             "time_bucket": time_bucket,
@@ -202,7 +207,7 @@ def go(
     return templates.TemplateResponse("waiting.html", {
         "request": request,
         "rid": res["rid"],
-        "location": location,
+        "location": LOCATION_LABELS.get(location, location),
         "city": city,
         "time_bucket": time_bucket,
         "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),

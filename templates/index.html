@@ -213,7 +213,11 @@
   }
 </script>
 <script>
-  const DORMS = ["Rožna dolina", "Kardeljeva ploščad", "Center"];
+  const DORMS = [
+    { value: "rozna", label: "Rožna dolina" },
+    { value: "kardeljeva", label: "Kardeljeva ploščad" },
+    { value: "center", label: "Center" },
+  ];
 
   const locationSelect = document.getElementById("location");
 
@@ -221,8 +225,8 @@
     locationSelect.innerHTML = "";
     DORMS.forEach(l => {
       const opt = document.createElement("option");
-      opt.value = l;
-      opt.textContent = l;
+      opt.value = l.value;
+      opt.textContent = l.label;
       locationSelect.appendChild(opt);
     });
   }
