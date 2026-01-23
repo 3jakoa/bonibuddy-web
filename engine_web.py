@@ -91,7 +91,7 @@ GA4_API_SECRET = os.getenv("GA4_API_SECRET", "").strip()
 def _ga4_send_event(event_name: str, params: Dict[str, Any]) -> None:
     """Best-effort pošlji dogodek v GA4 prek Measurement Protocol.
 
-    - Ne pošiljamo PII (npr. phone številk).
+    - Ne pošiljamo PII (kontakti ipd.).
     - Če ni konfiguracije ali če pride do napake, tiho ignoriramo.
     """
 
@@ -138,7 +138,7 @@ class Request:
     location: str
     when: datetime
     time_bucket: str  # "soon" | "today"
-    phone: str  # WhatsApp phone in E164-ish (npr 38640111222)
+    instagram: str  # Instagram handle (brez @)
     city: str  # "ljubljana" | "maribor"
     gender: str  # "female" | "male"
     match_pref: str  # "any" | "female" | "male"
@@ -178,10 +178,10 @@ def _cleanup() -> None:
             paired.pop(rid, None)
 
 
-def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
+def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, Any]:
     """Dodaj request. Vrne:
     - {"status":"waiting","rid":...}
-    - {"status":"matched","rid":..., "other_phone":..., "location":..., "when":...}
+    - {"status":"matched","rid":..., "other_instagram":..., "location":..., "when":...}
     """
     _cleanup()
 
@@ -192,7 +192,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
         location=location,
         when=when,
         time_bucket="soon",
-        phone=phone,
+        instagram=instagram,
         city="ljubljana",
         gender="male",
         match_pref="any",
@@ -208,7 +208,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
             other.location == location
             and other.city == req.city
             and other.time_bucket == req.time_bucket
-            and other.phone != phone
+            and other.instagram != instagram
             and _mutual_pref(req, other)
         ):
             # match found: odstrani other iz waiting, tudi novega ne dodajamo
@@ -223,7 +223,7 @@ def add_request(*, location: str, when: datetime, phone: str) -> Dict[str, Any]:
             return {
                 "status": "matched",
                 "rid": rid,
-                "other_phone": other.phone,
+                "other_instagram": other.instagram,
                 "location": location,
                 "when": when,
                 "other_rid": other_rid,
@@ -255,11 +255,11 @@ def check_status(rid: str) -> Dict[str, Any]:
 
 
 # --- Minimal pairing storage (da waiting page lahko ugotovi match) ---
-# rid -> other_phone
+# rid -> other_instagram
 paired: Dict[str, Dict[str, Any]] = {}
 
 def add_request_with_pairs(
-    *, city: str, location: str, when: datetime, time_bucket: str = "soon", phone: str, gender: str, match_pref: str
+    *, city: str, location: str, when: datetime, time_bucket: str = "soon", instagram: str, gender: str, match_pref: str
 ) -> Dict[str, Any]:
     _cleanup()
 
@@ -270,7 +270,7 @@ def add_request_with_pairs(
         location=location,
         when=when,
         time_bucket=time_bucket,
-        phone=phone,
+        instagram=instagram,
         city=city,
         gender=gender,
         match_pref=match_pref,
@@ -285,7 +285,7 @@ def add_request_with_pairs(
             other.location == location
             and other.city == req.city
             and other.time_bucket == req.time_bucket
-            and other.phone != phone
+            and other.instagram != instagram
             and _mutual_pref(req, other)
         ):
             try:
@@ -293,14 +293,14 @@ def add_request_with_pairs(
             except ValueError:
                 pass
             paired[rid] = {
-                "other_phone": other.phone,
+                "other_instagram": other.instagram,
                 "city": city,
                 "location": location,
                 "when": when,
                 "time_bucket": req.time_bucket,
             }
             paired[other_rid] = {
-                "other_phone": phone,
+                "other_instagram": instagram,
                 "city": city,
                 "location": location,
                 "when": when,

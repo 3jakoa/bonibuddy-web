@@ -6,8 +6,6 @@ from pydantic import BaseModel
 from pathlib import Path
 from datetime import datetime
 import os
-import re
-import urllib.parse
 
 import engine_web as engine
 
@@ -81,21 +79,11 @@ LOCATIONS_BY_CITY = {
     "maribor": ["Center", "Tabor", "Studenci", "Drugo"],
 }
 
-def normalize_phone(raw: str) -> str:
-    # Sprejmi npr: +386 40 111 222 ali 040111222
-    s = re.sub(r"\D+", "", raw.strip())
-    if s.startswith("00"):
-        s = s[2:]
-    if s.startswith("386"):
-        return s
-    # če je slovenska 0xxxxxxxx, pretvori v 386...
-    if s.startswith("0") and len(s) in (9, 10):
-        return "386" + s[1:]
-    return s  # fallback
-
-def wa_link(phone: str, text: str) -> str:
-    q = urllib.parse.quote(text)
-    return f"https://wa.me/{phone}?text={q}"
+def normalize_instagram(raw: str) -> str:
+    s = (raw or "").strip()
+    if s.startswith("@"):
+        s = s[1:]
+    return s
 
 # --- PWA convenience routes (some browsers request these at the root) ---
 @app.get("/manifest.webmanifest")
@@ -141,7 +129,8 @@ def go(
     location: str = Form(...),
     match_pref: str = Form(...),
     gender: str = Form(...),
-    phone: str = Form(...),
+    instagram: str = Form(None),
+    instagram_username: str = Form(None),
     consent: str = Form(None),
 ):
     if consent != "yes":
@@ -183,9 +172,9 @@ def go(
             {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Neveljavna izbira spola."},
         )
 
-    phone_n = normalize_phone(phone)
-    if len(phone_n) < 8:
-        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Vpiši veljavno WhatsApp številko."})
+    handle = normalize_instagram(instagram or instagram_username)
+    if not handle:
+        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "error": "Vpiši veljavno Instagram uporabniško ime."})
 
     # Interno še vedno uporabljamo datetime za shranjevanje; UI prikazuje samo bucket (kmalu/danes).
     when = datetime.now()
@@ -194,20 +183,17 @@ def go(
         location=location,
         when=when,
         time_bucket=time_bucket,
-        phone=phone_n,
+        instagram=handle,
         match_pref=match_pref,
         gender=gender,
         city=city,
     )
 
     if res["status"] == "matched":
-        other = res["other_phone"]
-        msg = f"Hej! BoniBuddy naju je povezal za bone ({location}). Greva skupaj {'danes' if time_bucket == 'today' else 'kmalu'}?"
         return templates.TemplateResponse("matched.html", {
             "request": request,
             "location": location,
-            "other_phone": other,
-            "wa_url": wa_link(other, msg),
+            "match_instagram": res["other_instagram"],
             "city": city,
             "time_bucket": time_bucket,
         })
