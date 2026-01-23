@@ -127,6 +127,19 @@
     }
 
     .link:hover{ text-decoration: underline; }
+
+    .handle{
+      font-size: 15px;
+      font-weight: 600;
+      margin: 4px 0 2px;
+    }
+
+    .btn.ghost{
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      margin-top: 10px;
+      border: 1px solid var(--border);
+    }
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -148,16 +161,37 @@
       <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
     </div>
 
-    <a class="btn" href="{{ wa_url }}" onclick="gtag('event','click_whatsapp');">Odpri WhatsApp</a>
-
     <div class="box">
-      <div class="label">Predlagano sporočilo</div>
-      Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?
+      <div class="label">Instagram uporabnik</div>
+      <div class="handle">@{{ match_instagram }}</div>
     </div>
+
+    <div class="box" id="message-box">
+      <div class="label">Predlagano sporočilo</div>
+      <div id="message-text">Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?</div>
+      <button type="button" class="btn ghost" id="copy-btn">Kopiraj sporočilo</button>
+    </div>
+
+    <a class="btn" href="https://instagram.com/{{ match_instagram }}" target="_blank" rel="noopener" onclick="gtag('event','open_instagram');">Odpri Instagram profil</a>
 
     <div class="foot">MVP: delimo samo kontakt za ta match.</div>
 
     <a class="link" href="/">Išči znova</a>
   </div>
+<script>
+  const copyBtn = document.getElementById("copy-btn");
+  const messageText = document.getElementById("message-text").textContent.trim();
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(messageText);
+      copyBtn.textContent = "Skopirano ✓";
+      setTimeout(() => copyBtn.textContent = "Kopiraj sporočilo", 1800);
+      gtag('event','copy_message');
+    } catch (e) {
+      copyBtn.textContent = "Ni šlo, kopiraj ročno";
+    }
+  });
+</script>
 </body>
 </html>
