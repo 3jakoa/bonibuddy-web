@@ -141,17 +141,29 @@
       background: rgba(255,255,255,0.05);
     }
 
-    .share-title{
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
     .share-body{
       font-size: 14px;
       color: var(--muted);
       line-height: 1.45;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
+    }
+
+    .share-btn{
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      backdrop-filter: blur(8px);
     }
 
     .share-feedback{
@@ -177,7 +189,7 @@
 </head>
 <body>
   <div class="card">
-    <h1 id="heading">⏳ Iščemo družbo</h1>
+    <h1 id="heading">Čakamo še na koga 👀</h1>
     <div class="subtitle">
       <span class="spinner" aria-hidden="true"></span>
       Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
@@ -197,13 +209,12 @@
     </div>
 
     <div class="share-block" id="shareBlock">
-      <div class="share-title">Čakamo še na koga 👀</div>
       <div class="share-body">
         Največ ljudi pride ob istem času.<br>
         Če poznaš koga, ki bi šel jest,<br>
         mu lahko pošlješ link.
       </div>
-      <button class="btn" type="button" id="shareBtn">Pošlji link</button>
+      <button class="share-btn" type="button" id="shareBtn">📤 Pošlji link</button>
       <div class="share-feedback" id="shareFeedback"> </div>
     </div>
 
