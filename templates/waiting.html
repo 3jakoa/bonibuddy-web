@@ -133,49 +133,6 @@
       margin: 12px 0 4px;
     }
 
-    .share-block{
-      margin-top: 18px;
-      padding: 14px 12px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: rgba(255,255,255,0.05);
-    }
-
-    .share-body{
-      font-size: 14px;
-      color: var(--muted);
-      line-height: 1.45;
-      margin-bottom: 10px;
-    }
-
-    .share-btn{
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      cursor: pointer;
-      text-decoration: none;
-      backdrop-filter: blur(8px);
-    }
-
-    .share-feedback{
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 8px;
-      min-height: 14px;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    .share-feedback.visible{ opacity: 1; }
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -208,16 +165,6 @@
       <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
     </div>
 
-    <div class="share-block" id="shareBlock">
-      <div class="share-body">
-        Največ ljudi pride ob istem času.<br>
-        Če poznaš koga, ki bi šel jest,<br>
-        mu lahko pošlješ link.
-      </div>
-      <button class="share-btn" type="button" id="shareBtn">📤 Pošlji link</button>
-      <div class="share-feedback" id="shareFeedback"> </div>
-    </div>
-
     <div class="row">
       <a class="link" href="/">Nazaj</a>
     </div>
@@ -227,7 +174,6 @@
     const RID = "{{ rid }}";
     // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
     window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
-    let shareFeedbackTimeout;
 
     function notificationsSupported() {
       return ('Notification' in window);
@@ -354,50 +300,6 @@
       });
     }
 
-    const shareBtn = document.getElementById('shareBtn');
-    const shareFeedback = document.getElementById('shareFeedback');
-
-    function showShareFeedback(msg) {
-      if (!shareFeedback) return;
-      shareFeedback.textContent = msg;
-      shareFeedback.classList.add('visible');
-      clearTimeout(shareFeedbackTimeout);
-      shareFeedbackTimeout = setTimeout(() => {
-        shareFeedback.classList.remove('visible');
-      }, 1500);
-    }
-
-    async function shareWaitingLink() {
-      const shareData = {
-        title: 'BoniBuddy',
-        text: 'Čakamo še na koga 👀',
-        url: window.location.href
-      };
-
-      if (navigator.share) {
-        try {
-          await navigator.share(shareData);
-          return;
-        } catch (err) {
-          if (err && err.name === 'AbortError') return;
-        }
-      }
-
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        showShareFeedback('Link kopiran ✅');
-      } catch (err) {
-        showShareFeedback('Ni šlo kopirati :(');
-      }
-    }
-
-    if (shareBtn) {
-      shareBtn.addEventListener('click', () => {
-        try { gtag('event', 'share_waiting'); } catch (e) {}
-        shareWaitingLink();
-      });
-    }
-
     updateNotifUI();
 
     // If the user already granted notifications earlier, auto-subscribe for push.
@@ -418,9 +320,6 @@
       if (data.status === "matched") {
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
-        const shareBlock = document.getElementById("shareBlock");
-        if (shareBlock) shareBlock.style.display = "none";
-
         // Best-effort local notification (works when app is open)
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -462,8 +361,6 @@
       if (data.status === "expired") {
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "⏱️ Request je potekel";
-        const shareBlock = document.getElementById("shareBlock");
-        if (shareBlock) shareBlock.style.display = "none";
         document.getElementById("status").innerHTML =
           `<div class="error">Request je potekel. Poskusi še enkrat na začetni strani.</div>`;
         return;
