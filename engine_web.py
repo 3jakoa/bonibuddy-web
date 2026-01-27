@@ -173,6 +173,11 @@ def _normalize_instagram(raw: str) -> str:
     return s.lower()
 
 
+def _normalize_location(raw: str) -> str:
+    """Keep location keys consistent across requests."""
+    return (raw or "").strip().lower()
+
+
 def _remove_from_waiting(rid: str) -> None:
     try:
         waiting.remove(rid)
@@ -241,12 +246,13 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
     cleanup_expired()
 
     instagram_norm = _normalize_instagram(instagram)
+    location_norm = _normalize_location(location)
 
     rid = uuid.uuid4().hex[:10]
     req = Request(
         rid=rid,
         created_at=datetime.now(),
-        location=location,
+        location=location_norm,
         when=when,
         time_bucket="soon",
         instagram=instagram_norm,
@@ -256,7 +262,7 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
     )
     requests[rid] = req
 
-    match_logger.info("request_new rid=%s instagram=%s location=%s", rid, instagram_norm, location)
+    match_logger.info("request_new rid=%s instagram=%s location=%s", rid, instagram_norm, location_norm)
 
     with match_lock:
         cleanup_expired()
@@ -271,7 +277,7 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
             other_instagram = _normalize_instagram(other.instagram)
             other.instagram = other_instagram
             if (
-                other.location == location
+                other.location == location_norm
                 and other.city == req.city
                 and other.time_bucket == req.time_bucket
                 and other_instagram != instagram_norm
@@ -285,27 +291,27 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
                 paired[rid] = {
                     "other_instagram": other.instagram,
                     "city": req.city,
-                    "location": location,
+                    "location": location_norm,
                     "when": when,
                     "time_bucket": req.time_bucket,
                 }
                 paired[other_rid] = {
                     "other_instagram": instagram_norm,
                     "city": req.city,
-                    "location": location,
+                    "location": location_norm,
                     "when": when,
                     "time_bucket": req.time_bucket,
                 }
-                match_logger.info("match_created rid=%s other_rid=%s location=%s", rid, other_rid, location)
+                match_logger.info("match_created rid=%s other_rid=%s location=%s", rid, other_rid, location_norm)
                 _ga4_send_event(
                     "match_found",
-                    {"city": req.city, "location": location, "time_bucket": req.time_bucket},
+                    {"city": req.city, "location": location_norm, "time_bucket": req.time_bucket},
                 )
                 return {
                     "status": "matched",
                     "rid": rid,
                     "other_instagram": other.instagram,
-                    "location": location,
+                    "location": location_norm,
                     "when": when,
                     "other_rid": other_rid,
                 }
@@ -313,7 +319,7 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
         # ni matcha → v čakalnico
         if req.active:
             waiting.append(rid)
-    return {"status": "waiting", "rid": rid, "location": location, "when": when}
+    return {"status": "waiting", "rid": rid, "location": location_norm, "when": when}
 
 
 def check_status(rid: str) -> Dict[str, Any]:
@@ -350,12 +356,13 @@ def add_request_with_pairs(
     cleanup_expired()
 
     instagram_norm = _normalize_instagram(instagram)
+    location_norm = _normalize_location(location)
 
     rid = uuid.uuid4().hex[:10]
     req = Request(
         rid=rid,
         created_at=datetime.now(),
-        location=location,
+        location=location_norm,
         when=when,
         time_bucket=time_bucket,
         instagram=instagram_norm,
@@ -369,7 +376,7 @@ def add_request_with_pairs(
         rid,
         instagram_norm,
         city,
-        location,
+        location_norm,
         time_bucket,
     )
 
@@ -388,7 +395,7 @@ def add_request_with_pairs(
             other_instagram = _normalize_instagram(other.instagram)
             other.instagram = other_instagram
             if (
-                other.location == location
+                other.location == location_norm
                 and other.city == req.city
                 and other.time_bucket == req.time_bucket
                 and other_instagram != instagram_norm
@@ -402,18 +409,18 @@ def add_request_with_pairs(
                 paired[rid] = {
                     "other_instagram": other.instagram,
                     "city": city,
-                    "location": location,
+                    "location": location_norm,
                     "when": when,
                     "time_bucket": req.time_bucket,
                 }
                 paired[other_rid] = {
                     "other_instagram": instagram_norm,
                     "city": city,
-                    "location": location,
+                    "location": location_norm,
                     "when": when,
                     "time_bucket": req.time_bucket,
                 }
-                match_logger.info("match_created rid=%s other_rid=%s location=%s", rid, other_rid, location)
+                match_logger.info("match_created rid=%s other_rid=%s location=%s", rid, other_rid, location_norm)
                 match_data = {"status": "matched", "rid": rid, **paired[rid]}
                 push_targets = [rid, other_rid]
                 break
@@ -424,7 +431,7 @@ def add_request_with_pairs(
                 "status": "waiting",
                 "rid": rid,
                 "city": city,
-                "location": location,
+                "location": location_norm,
                 "when": when,
                 "time_bucket": req.time_bucket,
             }
@@ -443,7 +450,7 @@ def add_request_with_pairs(
             "match_found",
             {
                 "city": city,
-                "location": location,
+                "location": location_norm,
                 "time_bucket": req.time_bucket,
             },
         )

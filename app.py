@@ -78,6 +78,7 @@ LOCATION_LABELS = {
     "rozna": "Rožna dolina",
     "kardeljeva": "Kardeljeva ploščad",
     "center": "Center",
+    "mestni_log": "Mestni log",
 }
 LOCATIONS_BY_CITY = {
     "ljubljana": list(LOCATION_LABELS.keys()),
