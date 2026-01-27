@@ -214,7 +214,7 @@
   const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
   const locationLabel = "{{ location }}";
   const timeLabel = "{% if time_bucket == 'today' %}danes{% else %}kmalu{% endif %}";
-  const message = `Hej! Matchala sva se na BoniBuddy (@${handle}) za ${locationLabel} (${timeLabel}). Greva na bone?`;
+  const message = `Hej! Matchala sva se na BoniBuddy za ${locationLabel} (${timeLabel}). Greva na bone?`;
 
   const messageEl = document.getElementById("message-text");
   if (messageEl) messageEl.textContent = message;
