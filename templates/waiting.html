@@ -175,6 +175,11 @@
     // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
     window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
 
+    function isStandaloneApp() {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+             (navigator.standalone === true);
+    }
+
     function notificationsSupported() {
       return ('Notification' in window);
     }
@@ -189,7 +194,8 @@
       const btn = document.getElementById('enableNotifBtn');
       if (!row || !hint || !btn) return;
 
-      if (!notificationsSupported()) {
+      // Only show CTA in installed PWA contexts
+      if (!isStandaloneApp() || !notificationsSupported()) {
         row.style.display = 'none';
         return;
       }
@@ -272,7 +278,7 @@
 
     async function enableNotifications() {
       try {
-        if (!notificationsSupported()) return;
+        if (!isStandaloneApp() || !notificationsSupported()) return;
         const perm = await Notification.requestPermission();
         updateNotifUI();
         if (perm === 'granted') {
@@ -305,7 +311,7 @@
     // If the user already granted notifications earlier, auto-subscribe for push.
     (async () => {
       try {
-        if (notificationsSupported() && pushSupported() && Notification.permission === 'granted') {
+        if (isStandaloneApp() && notificationsSupported() && pushSupported() && Notification.permission === 'granted') {
           await bestEffortSubscribePush();
         }
       } catch (e) {
@@ -320,9 +326,9 @@
       if (data.status === "matched") {
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
-        // Best-effort local notification (works when app is open)
+        // Best-effort local notification only inside installed PWA
         try {
-          if ('Notification' in window && Notification.permission === 'granted') {
+          if (isStandaloneApp() && 'Notification' in window && Notification.permission === 'granted') {
             new Notification('BoniBuddy', {
               body: 'Našli smo družbo! Odpri app in pošlji sporočilo na Instagram.'
             });
