@@ -73,6 +73,19 @@
       margin-bottom: 6px;
     }
 
+    .ig-label{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ig-label .ig-icon{
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+      opacity: 0.9;
+    }
+
     select, input[type="text"]{
       width: 100%;
       padding: 12px 12px;
@@ -174,8 +187,13 @@
 
 
       <div class="field">
-        <label>Instagram uporabniško ime</label>
-        <input name="instagram_username" type="text" placeholder="primer: boni.buddy" required>
+        <label class="ig-label">
+          <svg class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M7.75 3h8.5A4.75 4.75 0 0 1 21 7.75v8.5A4.75 4.75 0 0 1 16.25 21h-8.5A4.75 4.75 0 0 1 3 16.25v-8.5A4.75 4.75 0 0 1 7.75 3Zm0 1.5A3.25 3.25 0 0 0 4.5 7.75v8.5A3.25 3.25 0 0 0 7.75 19.5h8.5A3.25 3.25 0 0 0 19.5 16.25v-8.5A3.25 3.25 0 0 0 16.25 4.5h-8.5Zm8.75 1.25a.75.75 0 1 1 1.5 0v1a.75.75 0 1 1-1.5 0v-1ZM12 7.25A4.75 4.75 0 1 1 7.25 12 4.75 4.75 0 0 1 12 7.25Zm0 1.5A3.25 3.25 0 1 0 15.25 12 3.25 3.25 0 0 0 12 8.75Z"/>
+          </svg>
+          Instagram username
+        </label>
+        <input name="instagram_username" type="text" placeholder="Vstavi svoj Instagram username" required>
       </div>
 
       <label class="consent">
