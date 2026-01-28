@@ -101,6 +101,14 @@
       border-color: var(--accent);
     }
 
+    /* Ensure native dropdown options stay readable on desktop browsers */
+    @media (pointer: fine) {
+      select option{
+        color: #0b0f16;
+        background: #fff;
+      }
+    }
+
     .field{ margin-bottom: 14px; }
 
     .consent{
