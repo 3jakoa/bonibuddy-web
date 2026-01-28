@@ -184,7 +184,7 @@
 
     <div class="chips">
       <div class="chip">📍 <b>{{ location }}</b></div>
-      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
+      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
     </div>
 
     <div class="box">
@@ -213,7 +213,7 @@
   const rawHandle = "{{ match_instagram }}".trim();
   const handle = rawHandle.startsWith("@") ? rawHandle.slice(1) : rawHandle;
   const locationLabel = "{{ location }}";
-  const timeLabel = "{% if time_bucket == 'today' %}danes{% else %}kmalu{% endif %}";
+  const timeLabel = "{% if time_bucket == 'today' %}za večerjo 🍕{% else %}za kosilo 🍝{% endif %}";
   const message = `Hej! Matchala sva se na BoniBuddy za ${locationLabel} (${timeLabel}). Greva na bone?`;
 
   const messageEl = document.getElementById("message-text");

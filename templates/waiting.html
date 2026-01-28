@@ -154,7 +154,7 @@
 
     <div class="chips">
       <div class="chip">📍 <b>{{ location }}</b></div>
-      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Danes{% else %}Kmalu{% endif %}</b></div>
+      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
     </div>
 
 
@@ -338,7 +338,7 @@
         }
 
         const handle = data.other_instagram;
-        const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}danes{% else %}kmalu{% endif %}?`;
+        const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}za večerjo 🍕{% else %}za kosilo 🍝{% endif %}?`;
         const ig = handle ? `https://instagram.com/${encodeURIComponent(handle)}` : null;
 
         // Replace status area with Instagram info and actions
