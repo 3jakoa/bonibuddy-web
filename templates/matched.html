@@ -238,6 +238,14 @@
       }
     });
   }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.gtag === 'function') {
+        gtag('event', 'matched_viewed');
+      }
+    });
+  }
 </script>
 </body>
 </html>

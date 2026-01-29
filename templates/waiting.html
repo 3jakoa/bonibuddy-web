@@ -170,15 +170,38 @@
     </div>
   </div>
 
-  <script>
-    const RID = "{{ rid }}";
-    // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
-    window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+<script>
+  const RID = "{{ rid }}";
+  // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
+  window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
 
-    function isStandaloneApp() {
-      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-             (navigator.standalone === true);
+  const waitingStart = Date.now();
+  let sentWaitingDuration = false;
+
+  function sendWaitingDuration(reason) {
+    if (sentWaitingDuration) return;
+    sentWaitingDuration = true;
+    const duration_seconds = Math.round((Date.now() - waitingStart) / 1000);
+    if (typeof window.gtag === 'function') {
+      gtag('event', 'waiting_duration', { duration_seconds, reason });
     }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.gtag === 'function') {
+        gtag('event', 'waiting_viewed');
+      }
+    });
+  }
+
+  window.addEventListener('pagehide', () => sendWaitingDuration('leave'));
+  window.addEventListener('beforeunload', () => sendWaitingDuration('leave'));
+
+  function isStandaloneApp() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           (navigator.standalone === true);
+  }
 
     function notificationsSupported() {
       return ('Notification' in window);
@@ -324,6 +347,7 @@
       const data = await res.json();
 
       if (data.status === "matched") {
+        sendWaitingDuration('matched');
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
         // Best-effort local notification only inside installed PWA
