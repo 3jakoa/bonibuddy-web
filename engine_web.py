@@ -22,7 +22,7 @@ match_logger = logging.getLogger("bonibuddy.match")
 # rid -> PushSubscription JSON (as received from the browser)
 PUSH_SUBSCRIPTIONS: Dict[str, Dict[str, Any]] = {}
 
-REQUEST_TTL_SECONDS = 40 * 60  # 40 minutes
+REQUEST_TTL_SECONDS = 60 * 60  # 60 minutes
 
 # Serializes access to the waiting pool + pairing to avoid double matches.
 match_lock = threading.Lock()
