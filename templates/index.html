@@ -222,7 +222,7 @@
       <div class="muted" style="margin-top:10px; margin-bottom:6px;">Poišči restavracijo</div>
       <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
         <input type="hidden" name="t" value="{{ selected_t }}">
-        <input type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
+        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
         {% if query %}
           <button type="button" class="search-clear" aria-label="Počisti iskanje"
                   onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
@@ -231,10 +231,10 @@
 
       <div class="restaurant-list">
         {% if rows %}
-          <div class="list">
+          <div id="restaurantList" class="list">
             {% for item in rows %}
               {% set is_active = item.count > 0 %}
-              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1" style="{% if is_active %}cursor:default;{% endif %}">
+              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1" style="{% if is_active %}cursor:default;{% endif %}" data-name="{{ item.restaurant.name|lower }}" data-subtitle="{{ (item.restaurant.address or item.restaurant.city)|lower }}">
                 <div class="rest-info">
                   <div class="rest-name">{{ item.restaurant.name }}</div>
                   <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
@@ -258,6 +258,7 @@
               </a>
             {% endfor %}
           </div>
+          <div id="noResults" class="muted" style="display:none; margin-top:8px;">Ni zadetkov.</div>
         {% endif %}
 
       </div>
@@ -316,7 +317,30 @@
   </div>
 <script>
   {% if feature_waiting_board %}
-    // no extra JS needed for waiting board landing
+    (function() {
+      const searchInput = document.getElementById('restSearch');
+      const list = document.getElementById('restaurantList');
+      const noResults = document.getElementById('noResults');
+      if (!searchInput || !list) return;
+
+      const items = Array.from(list.querySelectorAll('[data-name]'));
+
+      function applyFilter() {
+        const q = searchInput.value.trim().toLowerCase();
+        let visible = 0;
+        items.forEach(item => {
+          const name = item.dataset.name || '';
+          const sub = item.dataset.subtitle || '';
+          const match = !q || name.includes(q) || sub.includes(q);
+          item.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+      }
+
+      searchInput.addEventListener('input', applyFilter);
+      applyFilter();
+    })();
   {% else %}
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
