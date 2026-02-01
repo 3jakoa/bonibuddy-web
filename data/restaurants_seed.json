@@ -1,0 +1,130 @@
+[
+  {
+    "id": "bistro-slovely",
+    "name": "Bistro Slovely",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "rex",
+    "name": "Rex",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "hotspot",
+    "name": "Hotspot",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "kapital",
+    "name": "Kapital",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "ola-enka",
+    "name": "OLA ENKA",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "roza-slon-bezigrad",
+    "name": "Roza Slon Bežigrad",
+    "area_id": "kardeljeva",
+    "area_label": "Kardeljeva",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "da-bu-da",
+    "name": "DA BU DA",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "joe-penas",
+    "name": "Joe Pena's",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "restavracija-kluba-cankarjevega-doma",
+    "name": "Restavracija kluba Cankarjevega doma",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "bascarsija",
+    "name": "Baščaršija",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "burek-olimpija",
+    "name": "Burek Olimpija",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "burger-time",
+    "name": "BURGER TIME",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "abi-falafel",
+    "name": "ABI FALAFEL",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "pizzeria-foculus",
+    "name": "Pizzeria Foculus",
+    "area_id": "center",
+    "area_label": "Center",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "ufo",
+    "name": "UFO",
+    "area_id": "rozna",
+    "area_label": "Rožna",
+    "address": "",
+    "city": "Ljubljana"
+  },
+  {
+    "id": "studentski-dom-ljubljana-restavracija",
+    "name": "Študentski dom Ljubljana - Restavracija",
+    "area_id": "rozna",
+    "area_label": "Rožna",
+    "address": "",
+    "city": "Ljubljana"
+  }
+]

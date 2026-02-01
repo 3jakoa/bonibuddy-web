@@ -154,18 +154,27 @@
     }
 
     /* Waiting board home */
-    .chip-row{display:flex; gap:10px; align-items:center; margin:0 0 12px; flex-wrap:wrap;}
+    .chip-row{display:flex; gap:10px; align-items:flex-start; margin:0 0 12px; flex-wrap:wrap;}
     .chip-row--area{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling: touch; padding-bottom:4px;}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color:var(--text); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap;}
     .chip--active{border-color: rgba(106,166,255,0.8); background: rgba(106,166,255,0.16); color:var(--text);}
+    .chip-stack{display:flex; flex-direction:column; align-items:center; gap:6px;}
+    .time-caption{font-size:12px; color: var(--muted);}
+    .restaurant-list{max-height:420px; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
     .list{display:flex; flex-direction:column; gap:10px;}
     .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); text-decoration:none;}
+    .rest-row--active{background: rgba(120,200,140,0.08); border-color: rgba(120,200,140,0.35);}
     .rest-info{flex:1;}
     .rest-name{font-size:15px; font-weight:600;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
     .who{font-size:13px; color: var(--muted); margin-top:6px;}
     .badge{padding:8px 10px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid var(--border); font-weight:700; font-size:13px; margin-left:10px;}
+    .badge--active{background: #62c48a; border-color: #62c48a; color: #062014; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(98,196,138,0.25);}
     .muted{color: var(--muted);}
+    .suggest-cta{margin-top:14px; text-align:left;}
+    .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: rgba(255,255,255,0.75); text-decoration:none; font-weight:700; font-size:14px;}
+    .suggest-cta__link:hover{color: rgba(255,255,255,0.9); text-decoration: underline;}
+    .suggest-cta__hint{font-size:12px; color: var(--muted); margin-top:4px;}
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -191,9 +200,18 @@
 
       <div class="muted" style="margin-top:14px; margin-bottom:6px;">Kdaj greš?</div>
       <div class="chip-row chip-row--time">
-        <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now&area={{ selected_area }}">Zdaj</a>
-        <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30&area={{ selected_area }}">+30</a>
-        <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60&area={{ selected_area }}">+60</a>
+        <div class="chip-stack">
+          <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now&area={{ selected_area }}">Zdaj</a>
+          <div class="time-caption">{{ time_windows['now'].label }}</div>
+        </div>
+        <div class="chip-stack">
+          <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30&area={{ selected_area }}">+30</a>
+          <div class="time-caption">{{ time_windows['30'].label }}</div>
+        </div>
+        <div class="chip-stack">
+          <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60&area={{ selected_area }}">+60</a>
+          <div class="time-caption">{{ time_windows['60'].label }}</div>
+        </div>
       </div>
 
       <div class="muted" style="margin-top:6px; margin-bottom:6px;">Kje?</div>
@@ -205,40 +223,42 @@
         {% endfor %}
       </div>
 
-      {% set rows = top_active if top_active else fallback_list %}
-      {% if top_active %}
-        <div class="muted" style="margin-bottom:6px;">Aktivno trenutno</div>
-      {% endif %}
-      {% if rows %}
-        <div class="list">
-          {% for item in rows %}
-            <a class="rest-row" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1">
-              <div class="rest-info">
-                <div class="rest-name">{{ item.restaurant.name }}</div>
-                <div class="rest-sub">{{ item.restaurant.subtitle or area_labels.get(item.restaurant.area_id, item.restaurant.area_id) }}</div>
-                {% if item.count > 0 %}
-                  {% set handles = item.members %}
-                  {% set display_handles = handles[:2] %}
-                  {% set extra = handles|length - display_handles|length %}
-                  <div class="who">
-                    {% for h in display_handles %}
-                      @{{ h }}{% if not loop.last %}, {% endif %}
-                    {% endfor %}
-                    {% if extra > 0 %}+{{ extra }}{% endif %}
-                  </div>
-                {% else %}
-                  <div class="who muted">Za ta čas še ni objav.</div>
-                {% endif %}
-              </div>
-              <div class="badge">
-                {% if item.count == 1 %}1 gre{% elif item.count == 0 %}0 gre{% else %}{{ item.count }} gredo{% endif %}
-              </div>
-            </a>
-          {% endfor %}
+      <div class="restaurant-list">
+        {% if rows %}
+          <div class="list">
+            {% for item in rows %}
+              {% set is_active = item.count > 0 %}
+              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1" style="{% if is_active %}cursor:default;{% endif %}">
+                <div class="rest-info">
+                  <div class="rest-name">{{ item.restaurant.name }}</div>
+                  <div class="rest-sub">{{ item.restaurant.subtitle or area_labels.get(item.restaurant.area_id, item.restaurant.area_id) }}</div>
+                  {% if is_active %}
+                    {% set handles = item.members %}
+                    {% set display_handles = handles[:2] %}
+                    {% set extra = handles|length - display_handles|length %}
+                    <div class="who">
+                      {% for h in display_handles %}
+                        @{{ h }}{% if not loop.last %}, {% endif %}
+                      {% endfor %}
+                      {% if extra > 0 %}+{{ extra }}{% endif %}
+                    </div>
+                  {% else %}
+                    <div class="who muted">Za ta čas še ni objav.</div>
+                  {% endif %}
+                </div>
+                <div class="badge {% if is_active %}badge--active{% endif %}">
+                  {% if item.count == 1 %}1 gre{% elif item.count == 0 %}0 gre{% else %}{{ item.count }} gredo{% endif %}
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="suggest-cta">
+          <a class="suggest-cta__link" href="https://instagram.com/boni_buddy" target="_blank" rel="noopener">＋ Manjka tvoja lokacija?</a>
+          <div class="suggest-cta__hint">Pošlji nam message!</div>
         </div>
-      {% else %}
-        <div class="muted" style="margin-top:10px;">Za ta čas še ni nikogar — lahko začneš ti 👀</div>
-      {% endif %}
+      </div>
     {% else %}
       <h1>🍽️ BoniBuddy</h1>
       <div class="subtitle">Greš na bone?

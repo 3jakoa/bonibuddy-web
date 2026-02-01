@@ -4,7 +4,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import quote
 import os
 
@@ -15,6 +16,23 @@ BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI()
 
 FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "false").lower() in {"1", "true", "yes"}
+IG_USERNAME = "bonibuddy"
+LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
+
+
+def compute_time_windows(now: datetime | None = None) -> dict:
+    """Return half-hour windows starting at now for labels now/30/60."""
+    base = (now.astimezone(LOCAL_TZ) if now else datetime.now(LOCAL_TZ))
+    windows = {}
+    for key, offset in [("now", 0), ("30", 30), ("60", 60)]:
+        start = base + timedelta(minutes=offset)
+        end = start + timedelta(minutes=30)
+        windows[key] = {
+            "start": start,
+            "end": end,
+            "label": f"{start:%H:%M}–{end:%H:%M}",
+        }
+    return windows
 
 AREA_OPTIONS = [
     {"id": "all", "label": "Vse"},
@@ -88,9 +106,9 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 LOCATION_LABELS = {
-    "rozna": "Rožna dolina",
-    "kardeljeva": "Kardeljeva ploščad",
     "center": "Center",
+    "kardeljeva": "Kardeljeva",
+    "rozna": "Rožna",
     "mestni_log": "Mestni log",
 }
 LOCATIONS_BY_CITY = {
@@ -154,23 +172,21 @@ def index(request: Request):
         area_raw = (request.query_params.get("area") or "all").strip().lower()
         area = area_raw if area_raw in AREA_LABELS else "all"
 
-        total_waiting = engine.get_waiting_count_all(t) if area == "all" else sum(
-            engine.get_waiting_count(r.id, t) for r in engine.list_restaurants(area_id=area)
-        )
-        top_active = engine.get_top_active_restaurants(t, 5, area_id=None if area == "all" else area)
+        candidate_restaurants = list(engine.list_restaurants(area_id=None if area == "all" else area))
+        rows = []
+        total_waiting = 0
+        for r in candidate_restaurants:
+            cnt = engine.get_waiting_count(r.id, t)
+            total_waiting += cnt
+            rows.append(
+                {
+                    "restaurant": r,
+                    "count": cnt,
+                    "members": engine.get_waiting_members(r.id, t),
+                }
+            )
 
-        # fallback list if no active: show first 5 restaurants with counts
-        fallback = []
-        if not top_active:
-            for r in engine.list_restaurants(area_id=None if area == "all" else area):
-                fallback.append(
-                    {
-                        "restaurant": r,
-                        "count": engine.get_waiting_count(r.id, t),
-                        "members": engine.get_waiting_members(r.id, t),
-                    }
-                )
-            fallback = fallback[:5]
+        rows.sort(key=lambda x: (-int(x["count"] > 0), -x["count"], x["restaurant"].name.lower()))
 
         cookie_uid = request.cookies.get("bb_uid")
         active_plan = _get_active_plan(cookie_uid)
@@ -181,18 +197,25 @@ def index(request: Request):
                 "request": request,
                 "feature_waiting_board": True,
                 "total_waiting": total_waiting,
-                "top_active": top_active,
-                "fallback_list": fallback,
+                "rows": rows,
                 "selected_t": t,
                 "selected_area": area,
                 "area_options": AREA_OPTIONS,
                 "area_labels": AREA_LABELS,
+                "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
+                "time_windows": compute_time_windows(),
             },
         )
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False},
+        {
+            "request": request,
+            "locations": LOCATIONS_BY_CITY["ljubljana"],
+            "feature_waiting_board": False,
+            "ig_username": IG_USERNAME,
+            "time_windows": compute_time_windows(),
+        },
     )
 
 
@@ -231,6 +254,7 @@ def choose(request: Request):
             "area_options": AREA_OPTIONS,
             "selected_area": area,
             "area_labels": AREA_LABELS,
+            "ig_username": IG_USERNAME,
             "active_plan": _get_active_plan(request.cookies.get("bb_uid")),
         },
     )
@@ -367,6 +391,7 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
             "join_focus": bool(join_focus),
             "selected_bucket": selected_bucket,
             "active_plan": active_plan,
+            "time_windows": compute_time_windows(),
         },
     )
 

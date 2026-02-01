@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
+from pathlib import Path
+from pathlib import Path
 import uuid
 import os
 import json
@@ -92,13 +94,16 @@ WAITING_MEMBER_TTL_MIN = 90  # minutes a waiting-board member stays alive
 
 # Waiting board locations (keep in sync with app UI)
 LOCATION_LABELS = {
-    "rozna": "Rožna dolina",
-    "kardeljeva": "Kardeljeva",
     "center": "Center",
+    "kardeljeva": "Kardeljeva",
+    "rozna": "Rožna",
     "mestni_log": "Mestni log",
-    "vic": "Vič",
     "siska": "Šiška",
+    "vic": "Vič",
 }
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_SEED_PATHS = [BASE_DIR / "data" / "restaurants_seed.json", BASE_DIR / "restaurants_seed.json"]
 
 ALLOWED_TIME_BUCKETS = {"now", "30", "60"}
 
@@ -138,22 +143,48 @@ class SlotMember:
 waiting_slots: Dict[tuple[str, str], WaitingSlot] = {}  # key: (restaurant_id, time_bucket)
 slot_members: Dict[str, List[SlotMember]] = {}  # key: slot_id -> members
 
-# Static locations + restaurants for waiting board MVP (UI driven).
-locations: List[Location] = [
-    Location(id="center", name="Center"),
-    Location(id="kardeljeva", name="Kardeljeva"),
-    Location(id="vic", name="Vič"),
-    Location(id="siska", name="Šiška"),
-]
+def _load_restaurants_from_seed() -> List[Restaurant]:
+    """Load curated restaurants from the JSON seed file."""
+    for path in DEFAULT_SEED_PATHS:
+        if not path.exists():
+            continue
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                raw = json.load(fh)
+            loaded: List[Restaurant] = []
+            if isinstance(raw, list):
+                for item in raw:
+                    rid = (item.get("id") or "").strip().lower()
+                    name = (item.get("name") or "").strip()
+                    area_id = (item.get("area_id") or "").strip().lower()
+                    if not (rid and name and area_id):
+                        continue
+                    location_id = (item.get("location_id") or area_id).strip().lower()
+                    subtitle = (item.get("subtitle") or None) or None
+                    loaded.append(
+                        Restaurant(
+                            id=rid,
+                            name=name,
+                            location_id=location_id,
+                            area_id=area_id,
+                            subtitle=subtitle,
+                        )
+                    )
+            if loaded:
+                logger.info("restaurants_loaded count=%s path=%s", len(loaded), path)
+                return loaded
+            logger.warning("restaurants_seed_empty path=%s", path)
+        except Exception:
+            logger.exception("restaurants_seed_load_failed path=%s", path)
+    logger.warning("restaurants_seed_missing using empty list")
+    return []
 
-restaurants: List[Restaurant] = [
-    Restaurant(id="center-fdv", name="Menza FDV", location_id="center", area_id="center"),
-    Restaurant(id="center-ff", name="Menza FF/FDV", location_id="center", area_id="center", subtitle="Aškerčeva"),
-    Restaurant(id="kardeljeva-porcia", name="Menza Kardeljeva", location_id="kardeljeva", area_id="kardeljeva"),
-    Restaurant(id="kardeljeva-agp", name="Menza AGP", location_id="kardeljeva", area_id="kardeljeva"),
-    Restaurant(id="vic-men", name="Menza Vič", location_id="vic", area_id="vic"),
-    Restaurant(id="siska-men", name="Menza Šiška", location_id="siska", area_id="siska"),
-]
+
+# Static locations for waiting board MVP (UI driven).
+locations: List[Location] = [Location(id=k, name=v) for k, v in LOCATION_LABELS.items()]
+
+# Loaded from curated seed JSON.
+restaurants: List[Restaurant] = _load_restaurants_from_seed()
 
 
 def list_locations() -> List[Location]:
