@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <title>BoniBuddy • Zaključeno</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: rgba(255,255,255,0.08);
+      --card2: rgba(255,255,255,0.06);
+      --text: rgba(255,255,255,0.95);
+      --muted: rgba(255,255,255,0.65);
+      --border: rgba(255,255,255,0.14);
+      --accent: #6aa6ff;
+      --radius: 18px;
+      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(900px 600px at 20% 0%, rgba(106,166,255,0.22), transparent 60%),
+        radial-gradient(900px 600px at 90% 10%, rgba(65,209,139,0.18), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      width:100%;
+      max-width:460px;
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:22px 20px 24px;
+      backdrop-filter: blur(10px);
+    }
+    h1{margin:0 0 8px; font-size:22px;}
+    .subtitle{color:var(--muted); font-size:14px; margin-bottom:16px;}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.07); font-size:12px; color:var(--text);}
+    .btn{display:block; width:100%; text-align:center; padding:14px 14px; border-radius:14px; border:1px solid var(--border); background: linear-gradient(135deg, #6aa6ff, #7dd3a8); color:#081018; font-weight:700; text-decoration:none; margin-top:12px;}
+    .btn-secondary{display:block; width:100%; text-align:center; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color:rgba(255,255,255,0.9); font-weight:600; text-decoration:none; margin-top:8px;}
+    .btn-secondary:hover{border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);}
+    .link{display:block; margin-top:12px; color:var(--muted); text-decoration:none; font-size:13px;}
+    .preview-box{margin-top:8px; border:1px solid var(--border); background: rgba(255,255,255,0.05); border-radius:12px; padding:10px 12px; font-size:13px; color:var(--muted); line-height:1.35;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% include "_active_plan.html" %}
+    {% if joined_existing %}
+      <h1>Dogovorjeno ✅</h1>
+      <div class="subtitle">Greš v {{ restaurant.name }} · {{ bucket_label }}</div>
+      <div class="subtitle">Pridružil si se: {% if primary_other %}{{ primary_other }}{% endif %}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
+      {% if primary_other %}
+        <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+        <div class="subtitle" style="margin-top:10px; margin-bottom:4px;">Predlagano sporočilo</div>
+        <div class="preview-box">Hej! Vidim na BoniBuddy, da greš jest v {{ restaurant.name }} {{ bucket_label }}. A greva skupaj? 😊</div>
+        <button class="btn-secondary" id="copyDmBtn" type="button">📋 Kopiraj DM</button>
+        <div class="muted" style="font-size:12px; margin-top:4px;">Prilepi v Instagram DM.</div>
+      {% endif %}
+    {% else %}
+      <h1>Plan objavljen 👀</h1>
+      <div class="subtitle">Greš v {{ restaurant.name }} · {{ bucket_label }}</div>
+      <div class="subtitle">Zaenkrat si prvi — povabi prijatelja ali počakaj.</div>
+      <button class="btn" id="shareBtn" type="button">Deli link</button>
+      <button class="btn btn-secondary" id="copyInviteBtn" type="button">📋 Kopiraj vabilo</button>
+    {% endif %}
+
+    <form method="post" action="/waiting/leave" style="margin-top:14px;">
+      <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+      <input type="hidden" name="time_bucket" value="{{ bucket }}">
+      <input type="hidden" name="user_id" value="{{ user_id }}">
+      <button class="btn btn-secondary" type="submit">Prekliči plan</button>
+    </form>
+    <a class="link" href="/">Nazaj na pregled</a>
+  </div>
+  <script>
+    (function(){
+      async function copyText(txt){
+        try{
+          await navigator.clipboard.writeText(txt);
+          return true;
+        }catch(e){ return false; }
+      }
+      const dmBtn = document.getElementById('copyDmBtn');
+      if(dmBtn){
+        dmBtn.addEventListener('click', async ()=>{
+          const ok = await copyText("{{ copy_message_for_dm }}");
+          dmBtn.textContent = ok ? "✅ Kopirano" : "Ni uspelo kopirati";
+          setTimeout(()=>dmBtn.textContent="📋 Kopiraj DM",1500);
+        });
+      }
+      const inviteBtn = document.getElementById('copyInviteBtn');
+      if(inviteBtn){
+        inviteBtn.addEventListener('click', async ()=>{
+          const ok = await copyText("{{ copy_invite_message }}");
+          inviteBtn.textContent = ok ? "Skopirano ✓" : "Ni šlo, kopiraj ročno";
+          setTimeout(()=>inviteBtn.textContent="Kopiraj vabilo",1500);
+        });
+      }
+      const shareBtn = document.getElementById('shareBtn');
+      if(shareBtn){
+        shareBtn.addEventListener('click', async ()=>{
+          const url = "{{ share_url }}";
+          const text = "{{ copy_invite_message }}";
+          try{
+            if(navigator.share){
+              await navigator.share({title:"BoniBuddy", text, url});
+            }else{
+              await copyText(text);
+              shareBtn.textContent = "Link skopiran ✓";
+              setTimeout(()=>shareBtn.textContent="Deli link",1500);
+            }
+          }catch(e){
+            shareBtn.textContent = "Poskusi znova";
+            setTimeout(()=>shareBtn.textContent="Deli link",1500);
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

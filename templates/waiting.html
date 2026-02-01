@@ -38,7 +38,7 @@
 
     .card{
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       background: linear-gradient(180deg, var(--card), var(--card2));
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -133,6 +133,33 @@
       margin: 12px 0 4px;
     }
 
+    .box{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.35;
+    }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .cta-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    .cta-row button{flex:1; min-width:120px; padding:12px 10px; border-radius:12px; border:1px solid var(--border); background: linear-gradient(135deg, #6aa6ff, #7dd3a8); color:#081018; font-weight:700; cursor:pointer;}
+    .input-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+    .input-row input{flex:1; min-width:200px; padding:12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color:var(--text);}
+    .status{font-size:13px; color:var(--muted); margin-top:8px;}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.07); font-size:12px;}
+    .badge{padding:6px 9px; border-radius:10px; background: rgba(255,255,255,0.1); border:1px solid var(--border); font-weight:700; font-size:13px;}
+    .slot-card{border:1px solid var(--border); background: rgba(255,255,255,0.06); border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease;}
+    .slot-card.selected{border:2px solid var(--accent); background: rgba(106,166,255,0.16);}
+    .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+    .time-caption{font-size:12px; color: var(--muted); margin-top:4px;}
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -146,33 +173,122 @@
 </head>
 <body>
   <div class="card">
-    <h1 id="heading">Čakamo še na koga 👀</h1>
-    <div class="subtitle">
-      <span class="spinner" aria-hidden="true"></span>
-      Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
-    </div>
+    {% if feature_waiting_board %}
+      {% include "_active_plan.html" %}
+      <h1>📍 {{ restaurant.name }}</h1>
+      <div class="subtitle">{{ location_label }} • Izberi, kdaj greš jest — in potrdi.</div>
+      {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
+      {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
 
-    <div class="chips">
-      <div class="chip">📍 <b>{{ location }}</b></div>
-      <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
-    </div>
+      <form method="post" action="/waiting/join" id="joinForm">
+        <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
+        <input type="hidden" id="timeBucketInput" name="time_bucket" value="{{ selected_bucket }}">
+
+        {% for tb in ['now','30','60'] %}
+          {% set slot = board.get(tb) %}
+          <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
+            <div class="slot-header">
+              <span style="font-weight:700;">{{ tb_labels[tb] }}</span>
+              <span class="badge">
+                {% set cnt = slot.count if slot else 0 %}
+                {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+              </span>
+            </div>
+            <div class="time-caption">{{ time_windows[tb].label }}</div>
+            {% if slot and slot.members %}
+              <div style="font-size:13px; color: var(--muted);">
+                {%- set handles = slot.members -%}
+                {%- set show_handles = handles[:2] -%}
+                {%- set extra = handles|length - show_handles|length -%}
+                {%- for m in show_handles -%}
+                  @{{ m }}{% if not loop.last %}, {% endif %}
+                {%- endfor -%}
+                {% if extra > 0 %} +{{ extra }}{% endif %}
+              </div>
+            {% else %}
+              <div class="muted" style="font-size:13px;">Za ta čas še ni objav.</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div class="input-row">
+          <input id="userIdInput" name="user_id" type="text" placeholder="tvoj Instagram" value="{{ user_id }}" required>
+        </div>
+        <div class="cta-row">
+          <button type="submit">Potrdi</button>
+        </div>
+      </form>
+
+      {% if user_bucket %}
+        <div class="status">
+          <span class="pill">Ti si prijavljen za: {{ tb_labels[user_bucket] }}</span>
+        </div>
+        <form method="post" action="/waiting/leave" style="margin-top:10px;">
+          <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
+          <input type="hidden" name="time_bucket" value="{{ user_bucket }}">
+          <input type="hidden" name="user_id" value="{{ user_id }}">
+          <button class="btn" type="submit" style="width:100%; background: rgba(255,255,255,0.08); color: var(--text); border:1px solid var(--border);">Prekliči</button>
+        </form>
+      {% endif %}
+      <a class="link" href="/" style="display:inline-block; margin-top:16px;">Nazaj na lokacije</a>
+      <script>
+        (function() {
+          const focus = {{ 'true' if join_focus else 'false' }};
+          if (focus) {
+            const el = document.getElementById('userIdInput');
+            if (el) { setTimeout(() => el.focus(), 50); }
+          }
+          const slots = document.querySelectorAll('.slot-card');
+          const hidden = document.getElementById('timeBucketInput');
+          let selected = '{{ selected_bucket }}';
+          function updateSelection(bucket) {
+            selected = bucket;
+            if (hidden) hidden.value = bucket;
+            slots.forEach(el => {
+              if (el.dataset.bucket === bucket) {
+                el.classList.add('selected');
+              } else {
+                el.classList.remove('selected');
+              }
+            });
+          }
+          slots.forEach(el => {
+            el.addEventListener('click', () => {
+              updateSelection(el.dataset.bucket);
+            });
+          });
+          updateSelection(selected);
+        })();
+      </script>
+    {% else %}
+      <h1 id="heading">Čakamo še na koga 👀</h1>
+      <div class="subtitle">
+        <span class="spinner" aria-hidden="true"></span>
+        Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
+      </div>
+
+      <div class="chips">
+        <div class="chip">📍 <b>{{ location }}</b></div>
+        <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
+      </div>
 
 
-    <div id="status" class="muted">Še ni matcha…</div>
+      <div id="status" class="muted">Še ni matcha…</div>
 
-    <div class="row" id="notifRow" style="display:none;">
-      <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
-      <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
-    </div>
+      <div class="row" id="notifRow" style="display:none;">
+        <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
+        <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
+      </div>
 
-    <div class="row">
-      <a class="link" href="/">Nazaj</a>
-    </div>
+      <div class="row">
+        <a class="link" href="/">Nazaj</a>
+      </div>
+    {% endif %}
   </div>
 
+{% if not feature_waiting_board %}
 <script>
   const RID = "{{ rid }}";
-  // Provided by backend (Railway env var VAPID_PUBLIC_KEY)
   window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
 
   const waitingStart = Date.now();
@@ -217,7 +333,6 @@
       const btn = document.getElementById('enableNotifBtn');
       if (!row || !hint || !btn) return;
 
-      // Only show CTA in installed PWA contexts
       if (!isStandaloneApp() || !notificationsSupported()) {
         row.style.display = 'none';
         return;
@@ -225,7 +340,6 @@
 
       row.style.display = 'block';
 
-      // If push isn't supported in this context/device, explain it
       if (!pushSupported()) {
         btn.style.display = 'none';
         hint.textContent = 'Push obvestila niso podprta v tem brskalniku/na tej napravi.';
@@ -247,22 +361,16 @@
     async function ensureServiceWorkerRegistered() {
       try {
         if (!('serviceWorker' in navigator)) return;
-        // Register at root scope so SW scope is '/'.
         await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     async function bestEffortSubscribePush() {
-      // Best-effort: requires backend + VAPID public key. We won't break anything if unavailable.
       try {
         await ensureServiceWorkerRegistered();
         if (!pushSupported() || Notification.permission !== 'granted') return;
 
         const reg = await navigator.serviceWorker.ready;
-
-        // If already subscribed, just ensure backend knows about it.
         const existing = await reg.pushManager.getSubscription();
         if (existing) {
           await fetch('/api/push/subscribe', {
@@ -273,16 +381,13 @@
           return;
         }
 
-        // Expect the VAPID public key to be provided on the page later.
-        // If it's missing, we simply skip push subscription for now.
         const vapidPublicKey = window.VAPID_PUBLIC_KEY;
         if (!vapidPublicKey || typeof vapidPublicKey !== 'string') return;
 
-        // Convert base64url to Uint8Array
         const padding = '='.repeat((4 - (vapidPublicKey.length % 4)) % 4);
         const base64 = (vapidPublicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
         const raw = atob(base64);
-        const key = new Uint8Array([...raw].map(ch => ch.charCodeAt(0)));
+        const key = new Uint8Array([...raw].map(ch => ch.charCodeAt(0)]);
 
         const subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -294,9 +399,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rid: RID, subscription })
         });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     async function enableNotifications() {
@@ -305,25 +408,17 @@
         const perm = await Notification.requestPermission();
         updateNotifUI();
         if (perm === 'granted') {
-          // Optionally create a test notification so user knows it works
           try {
             new Notification('BoniBuddy', { body: 'Obvestila so vključena. Sporočim, ko najdem match.' });
-          } catch (e) {
-            // ignore
-          }
-          // Best-effort: also try to subscribe for push if configured
+          } catch (e) {}
           await bestEffortSubscribePush();
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
-    // wire button
     const enableBtn = document.getElementById('enableNotifBtn');
     if (enableBtn) {
       enableBtn.addEventListener('click', () => {
-        // analytics (optional)
         try { gtag('event', 'enable_notifications'); } catch (e) {}
         enableNotifications();
       });
@@ -331,15 +426,12 @@
 
     updateNotifUI();
 
-    // If the user already granted notifications earlier, auto-subscribe for push.
     (async () => {
       try {
         if (isStandaloneApp() && notificationsSupported() && pushSupported() && Notification.permission === 'granted') {
           await bestEffortSubscribePush();
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
 
     async function poll() {
@@ -350,22 +442,18 @@
         sendWaitingDuration('matched');
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
-        // Best-effort local notification only inside installed PWA
         try {
           if (isStandaloneApp() && 'Notification' in window && Notification.permission === 'granted') {
             new Notification('BoniBuddy', {
               body: 'Našli smo družbo! Odpri app in pošlji sporočilo na Instagram.'
             });
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
 
         const handle = data.other_instagram;
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}za večerjo 🍕{% else %}za kosilo 🍝{% endif %}?`;
         const ig = handle ? `https://instagram.com/${encodeURIComponent(handle)}` : null;
 
-        // Replace status area with Instagram info and actions
         const statusEl = document.getElementById("status");
         statusEl.innerHTML =
           `<div style="margin: 14px 0 10px;" class="muted">Klikni spodaj in pošlji prvo sporočilo.</div>` +
@@ -400,6 +488,7 @@
     }
 
     poll();
-  </script>
+</script>
+{% endif %}
 </body>
 </html>
