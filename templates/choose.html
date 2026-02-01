@@ -46,6 +46,8 @@
     .header-title{font-size:19px; font-weight:700;}
     .search-bar{display:flex; gap:10px; margin-bottom:14px;}
     .search-bar input{flex:1; padding:12px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color:var(--text);}
+    .search-clear{padding:11px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color: var(--muted); cursor:pointer; font-weight:700;}
+    .search-clear:hover{border-color: var(--accent); color: var(--text);}
     .chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
     .chip{padding:9px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color:var(--text); text-decoration:none; font-size:13px;}
     .chip.active{background: linear-gradient(135deg, #6aa6ff, #7dd3a8); color:#081018; border-color: transparent; font-weight:700;}
@@ -73,17 +75,12 @@
     </div>
     <form class="search-bar" method="get" action="/choose">
       <input type="hidden" name="t" value="{{ time_bucket }}">
-      <input type="hidden" name="area" value="{{ selected_area }}">
-      <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo" autocomplete="off">
+      <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo po imenu" autocomplete="off">
+      {% if query %}
+        <button type="button" class="search-clear" aria-label="Počisti iskanje"
+                onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
+      {% endif %}
     </form>
-    <div class="chips">
-      {% for opt in area_options %}
-        <a class="chip {% if opt.id == selected_area %}active{% endif %}"
-           href="/choose?t={{ time_bucket }}&area={{ opt.id }}{% if query %}&q={{ query | urlencode }}{% endif %}">
-          {{ opt.label }}
-        </a>
-      {% endfor %}
-    </div>
 
     <div class="list" id="restList">
       {% if restaurants_with_counts %}
@@ -91,7 +88,7 @@
           <div class="rest-row">
             <a href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}">
               <div class="rest-name">{{ item.restaurant.name }}</div>
-              <div class="rest-sub">{{ item.restaurant.subtitle or area_labels.get(item.restaurant.area_id, item.restaurant.location_id) }}</div>
+              <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
             </a>
             <div style="display:flex; align-items:center;">
               <div class="badge">{% if item.total_waiting == 1 %}1 gre{% elif item.total_waiting == 0 %}0 gre{% else %}{{ item.total_waiting }} gredo{% endif %}</div>

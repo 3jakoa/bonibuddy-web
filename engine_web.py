@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from pathlib import Path
-from pathlib import Path
 import uuid
 import os
 import json
@@ -103,7 +102,7 @@ LOCATION_LABELS = {
 }
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_SEED_PATHS = [BASE_DIR / "data" / "restaurants_seed.json", BASE_DIR / "restaurants_seed.json"]
+DEFAULT_RESTAURANT_PATHS = [BASE_DIR / "data" / "restaurants.json", BASE_DIR / "restaurants.json"]
 
 ALLOWED_TIME_BUCKETS = {"now", "30", "60"}
 
@@ -119,9 +118,16 @@ class Location:
 class Restaurant:
     id: str
     name: str
-    location_id: str
-    area_id: str
+    city: str
+    address: Optional[str] = None
+    rating: Optional[float] = None
+    subsidy_price: Optional[float] = None
+    meal_price: Optional[float] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    details_url: Optional[str] = None
     subtitle: Optional[str] = None
+    location_id: Optional[str] = None  # kept for backward compatibility
 
 
 @dataclass
@@ -143,40 +149,95 @@ class SlotMember:
 waiting_slots: Dict[tuple[str, str], WaitingSlot] = {}  # key: (restaurant_id, time_bucket)
 slot_members: Dict[str, List[SlotMember]] = {}  # key: slot_id -> members
 
+
+def _slugify(value: str) -> str:
+    """Lightweight slugifier for IDs (keeps ASCII only)."""
+    value = (value or "").strip().lower()
+    cleaned = []
+    prev_hyphen = False
+    for ch in value:
+        if ch.isalnum():
+            cleaned.append(ch)
+            prev_hyphen = False
+        else:
+            if not prev_hyphen:
+                cleaned.append("-")
+                prev_hyphen = True
+    slug = "".join(cleaned).strip("-")
+    return slug or "restaurant"
+
+
+def _normalize_city(raw: str) -> str:
+    return (raw or "").strip().lower()
+
+
+def _extract_restaurant_id(item: dict) -> Optional[str]:
+    """Prefer stable ID from details_url, fallback to name slug."""
+    url = (item.get("details_url") or "").strip()
+    if url:
+        slug = _slugify(url.rstrip("/").split("/")[-1])
+        if slug:
+            return slug
+    name = (item.get("name") or "").strip()
+    if name:
+        return _slugify(name)
+    return None
+
+
 def _load_restaurants_from_seed() -> List[Restaurant]:
-    """Load curated restaurants from the JSON seed file."""
-    for path in DEFAULT_SEED_PATHS:
+    """Load restaurants from the new JSON dataset, scoped to Ljubljana."""
+    for path in DEFAULT_RESTAURANT_PATHS:
         if not path.exists():
             continue
         try:
             with path.open("r", encoding="utf-8") as fh:
                 raw = json.load(fh)
             loaded: List[Restaurant] = []
+            seen_ids: set[str] = set()
             if isinstance(raw, list):
                 for item in raw:
-                    rid = (item.get("id") or "").strip().lower()
                     name = (item.get("name") or "").strip()
-                    area_id = (item.get("area_id") or "").strip().lower()
-                    if not (rid and name and area_id):
+                    city = (item.get("city") or "").strip()
+                    if not (name and city):
                         continue
-                    location_id = (item.get("location_id") or area_id).strip().lower()
-                    subtitle = (item.get("subtitle") or None) or None
+                    # Hidden default filter: only keep Ljubljana
+                    if _normalize_city(city) != "ljubljana":
+                        continue
+                    rid = _extract_restaurant_id(item)
+                    if not rid:
+                        continue
+                    base_rid = rid
+                    # ensure unique ids even if names repeat
+                    idx = 2
+                    while rid in seen_ids:
+                        rid = f"{base_rid}-{idx}"
+                        idx += 1
+                    seen_ids.add(rid)
+                    address = (item.get("address") or "").strip() or None
+                    subtitle = address
                     loaded.append(
                         Restaurant(
                             id=rid,
                             name=name,
-                            location_id=location_id,
-                            area_id=area_id,
+                            city=city,
+                            address=address,
+                            rating=item.get("rating"),
+                            subsidy_price=item.get("subsidy_price"),
+                            meal_price=item.get("meal_price"),
+                            latitude=item.get("latitude"),
+                            longitude=item.get("longitude"),
+                            details_url=(item.get("details_url") or "").strip() or None,
                             subtitle=subtitle,
+                            location_id=_normalize_city(city) or None,
                         )
                     )
             if loaded:
                 logger.info("restaurants_loaded count=%s path=%s", len(loaded), path)
                 return loaded
-            logger.warning("restaurants_seed_empty path=%s", path)
+            logger.warning("restaurants_file_empty path=%s", path)
         except Exception:
-            logger.exception("restaurants_seed_load_failed path=%s", path)
-    logger.warning("restaurants_seed_missing using empty list")
+            logger.exception("restaurants_file_load_failed path=%s", path)
+    logger.warning("restaurants_file_missing using empty list")
     return []
 
 
@@ -191,14 +252,16 @@ def list_locations() -> List[Location]:
     return locations
 
 
-def list_restaurants(location_id: str | None = None, area_id: str | None = None) -> List[Restaurant]:
+def list_restaurants(*, city: str | None = "ljubljana", search: str | None = None) -> List[Restaurant]:
+    """Return restaurants filtered by city (default Ljubljana) and optional name search."""
     result = restaurants
-    if location_id:
-        loc_norm = _normalize_location(location_id)
-        result = [r for r in result if _normalize_location(r.location_id) == loc_norm]
-    if area_id:
-        area_norm = _normalize_location(area_id)
-        result = [r for r in result if _normalize_location(r.area_id) == area_norm]
+    if city:
+        city_norm = _normalize_city(city)
+        result = [r for r in result if _normalize_city(r.city) == city_norm]
+    if search:
+        q = search.strip().lower()
+        if q:
+            result = [r for r in result if q in r.name.lower()]
     return result
 
 
@@ -396,11 +459,11 @@ def get_waiting_count(restaurant_id: str, time_bucket: str) -> int:
     return int(slot.get("count") or 0)
 
 
-def get_top_active_restaurants(time_bucket: str, limit: int = 5, area_id: str | None = None) -> List[dict[str, Any]]:
+def get_top_active_restaurants(time_bucket: str, limit: int = 5, city: str | None = "ljubljana", search: str | None = None) -> List[dict[str, Any]]:
     if time_bucket not in ALLOWED_TIME_BUCKETS:
         return []
     rows = []
-    candidate_restaurants = list_restaurants(area_id=area_id) if area_id else restaurants
+    candidate_restaurants = list_restaurants(city=city, search=search)
     for r in candidate_restaurants:
         cnt = get_waiting_count(r.id, time_bucket)
         if cnt <= 0:
@@ -435,7 +498,7 @@ def get_waiting_summary_for_location(location_id: str) -> List[dict[str, Any]]:
     """Return list of restaurants in location with aggregated counts."""
     loc_norm = _normalize_location(location_id)
     result: List[dict[str, Any]] = []
-    for r in list_restaurants(loc_norm):
+    for r in list_restaurants(city=loc_norm):
         board = get_waiting_board(r.id)
         total = sum((board[tb]["count"] for tb in board))
         result.append(

@@ -156,6 +156,11 @@
     /* Waiting board home */
     .chip-row{display:flex; gap:10px; align-items:flex-start; margin:0 0 12px; flex-wrap:wrap;}
     .chip-row--area{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling: touch; padding-bottom:4px;}
+    .search-bar{display:flex; gap:10px; align-items:center; margin:6px 0 12px;}
+    .search-bar input{flex:1; padding:12px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color:var(--text); font-size:15px;}
+    .search-bar input:focus{border-color: var(--accent);}
+    .search-clear{padding:11px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color: var(--muted); cursor:pointer; font-weight:700;}
+    .search-clear:hover{border-color: var(--accent); color: var(--text);}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color:var(--text); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap;}
     .chip--active{border-color: rgba(106,166,255,0.8); background: rgba(106,166,255,0.16); color:var(--text);}
     .chip-stack{display:flex; flex-direction:column; align-items:center; gap:6px;}
@@ -201,27 +206,28 @@
       <div class="muted" style="margin-top:14px; margin-bottom:6px;">Kdaj greš?</div>
       <div class="chip-row chip-row--time">
         <div class="chip-stack">
-          <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now&area={{ selected_area }}">Zdaj</a>
+          <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">Zdaj</a>
           <div class="time-caption">{{ time_windows['now'].label }}</div>
         </div>
         <div class="chip-stack">
-          <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30&area={{ selected_area }}">+30</a>
+          <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">+30</a>
           <div class="time-caption">{{ time_windows['30'].label }}</div>
         </div>
         <div class="chip-stack">
-          <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60&area={{ selected_area }}">+60</a>
+          <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">+60</a>
           <div class="time-caption">{{ time_windows['60'].label }}</div>
         </div>
       </div>
 
-      <div class="muted" style="margin-top:6px; margin-bottom:6px;">Kje?</div>
-      <div class="chip-row chip-row--area" style="margin-bottom:18px;">
-        {% for opt in area_options %}
-          <a class="chip {% if opt.id == selected_area %}chip--active{% endif %}" href="/?t={{ selected_t }}&area={{ opt.id }}">
-            {{ opt.label }}
-          </a>
-        {% endfor %}
-      </div>
+      <div class="muted" style="margin-top:10px; margin-bottom:6px;">Poišči menzo</div>
+      <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
+        <input type="hidden" name="t" value="{{ selected_t }}">
+        <input type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
+        {% if query %}
+          <button type="button" class="search-clear" aria-label="Počisti iskanje"
+                  onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
+        {% endif %}
+      </form>
 
       <div class="restaurant-list">
         {% if rows %}
@@ -231,7 +237,7 @@
               <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1" style="{% if is_active %}cursor:default;{% endif %}">
                 <div class="rest-info">
                   <div class="rest-name">{{ item.restaurant.name }}</div>
-                  <div class="rest-sub">{{ item.restaurant.subtitle or area_labels.get(item.restaurant.area_id, item.restaurant.area_id) }}</div>
+                  <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
                   {% if is_active %}
                     {% set handles = item.members %}
                     {% set display_handles = handles[:2] %}

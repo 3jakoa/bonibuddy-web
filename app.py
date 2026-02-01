@@ -15,7 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI()
 
-FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "false").lower() in {"1", "true", "yes"}
+# Default the waiting board experience ON; can still be disabled via env.
+FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "true").lower() in {"1", "true", "yes"}
 IG_USERNAME = "bonibuddy"
 LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
 
@@ -33,17 +34,6 @@ def compute_time_windows(now: datetime | None = None) -> dict:
             "label": f"{start:%H:%M}–{end:%H:%M}",
         }
     return windows
-
-AREA_OPTIONS = [
-    {"id": "all", "label": "Vse"},
-    {"id": "center", "label": "Center"},
-    {"id": "kardeljeva", "label": "Kardeljeva"},
-    {"id": "rozna", "label": "Rožna"},
-    {"id": "mestni_log", "label": "Mestni log"},
-    {"id": "vic", "label": "Vič"},
-    {"id": "siska", "label": "Šiška"},
-]
-AREA_LABELS = {a["id"]: a["label"] for a in AREA_OPTIONS}
 
 def _get_env(name: str) -> str:
     v = os.getenv(name, "").strip()
@@ -169,10 +159,9 @@ def index(request: Request):
         if t not in {"now", "30", "60"}:
             return RedirectResponse(url="/?t=now", status_code=303)
 
-        area_raw = (request.query_params.get("area") or "all").strip().lower()
-        area = area_raw if area_raw in AREA_LABELS else "all"
+        query_raw = (request.query_params.get("q") or "").strip()
 
-        candidate_restaurants = list(engine.list_restaurants(area_id=None if area == "all" else area))
+        candidate_restaurants = list(engine.list_restaurants(search=query_raw))
         rows = []
         total_waiting = 0
         for r in candidate_restaurants:
@@ -199,9 +188,7 @@ def index(request: Request):
                 "total_waiting": total_waiting,
                 "rows": rows,
                 "selected_t": t,
-                "selected_area": area,
-                "area_options": AREA_OPTIONS,
-                "area_labels": AREA_LABELS,
+                "query": query_raw,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
                 "time_windows": compute_time_windows(),
@@ -229,13 +216,9 @@ def choose(request: Request):
 
     q_raw = request.query_params.get("q", "") or ""
     q = q_raw.strip().lower()
-    area_raw = (request.query_params.get("area") or "all").strip().lower()
-    area = area_raw if area_raw in AREA_LABELS else "all"
-    restaurants = engine.list_restaurants(area_id=None if area == "all" else area)
+    restaurants = engine.list_restaurants(search=q_raw.strip())
     items = []
     for r in restaurants:
-        if area != "all" and getattr(r, "area_id", None) != area:
-            continue
         if q and q not in r.name.lower():
             continue
         total = engine.get_waiting_total(r.id)
@@ -249,11 +232,7 @@ def choose(request: Request):
             "feature_waiting_board": True,
             "restaurants_with_counts": items,
             "query": q_raw,
-            "location_labels": engine.LOCATION_LABELS,
             "time_bucket": t,
-            "area_options": AREA_OPTIONS,
-            "selected_area": area,
-            "area_labels": AREA_LABELS,
             "ig_username": IG_USERNAME,
             "active_plan": _get_active_plan(request.cookies.get("bb_uid")),
         },
@@ -369,7 +348,8 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
     board = engine.get_waiting_board(restaurant_id)
-    loc_label = engine.LOCATION_LABELS.get(restaurant.location_id, restaurant.location_id)
+    city_label = (getattr(restaurant, "city", "") or "").title()
+    loc_label = restaurant.address or city_label or restaurant.location_id or restaurant.id
     user_bucket = engine.get_user_bucket(restaurant_id, user_id) if user_id else None
     join_focus = request.query_params.get("join")
     pref_time_bucket = request.query_params.get("t")
