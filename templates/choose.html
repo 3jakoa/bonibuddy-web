@@ -96,5 +96,18 @@
     </div>
     <div class="foot">MVP: brez realtime osveževanja, posodobi stran ročno.</div>
   </div>
+  <script>
+    (function() {
+      const searchInput = document.querySelector('.search-bar input[name="q"]');
+      const form = searchInput && searchInput.form;
+      let typingTimer;
+      if (searchInput && form) {
+        searchInput.addEventListener('input', () => {
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => form.requestSubmit(), 250);
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
