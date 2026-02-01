@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 import uuid
 import os
@@ -18,6 +18,7 @@ VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "").strip()
 
 logger = logging.getLogger("bonibuddy.push")
 match_logger = logging.getLogger("bonibuddy.match")
+waiting_board_logger = logging.getLogger("bonibuddy.waiting_board")
 
 # rid -> PushSubscription JSON (as received from the browser)
 PUSH_SUBSCRIPTIONS: Dict[str, Dict[str, Any]] = {}
@@ -87,6 +88,333 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
 
 WINDOW_MIN = 15
 EXPIRE_MIN = 90  # po koliko min request poteče
+WAITING_MEMBER_TTL_MIN = 90  # minutes a waiting-board member stays alive
+
+# Waiting board locations (keep in sync with app UI)
+LOCATION_LABELS = {
+    "rozna": "Rožna dolina",
+    "kardeljeva": "Kardeljeva",
+    "center": "Center",
+    "mestni_log": "Mestni log",
+    "vic": "Vič",
+    "siska": "Šiška",
+}
+
+ALLOWED_TIME_BUCKETS = {"now", "30", "60"}
+
+
+# ----------------- Waiting board MVP (no forced matches) -----------------
+@dataclass
+class Location:
+    id: str
+    name: str
+
+
+@dataclass
+class Restaurant:
+    id: str
+    name: str
+    location_id: str
+    area_id: str
+    subtitle: Optional[str] = None
+
+
+@dataclass
+class WaitingSlot:
+    id: str
+    restaurant_id: str
+    time_bucket: str  # "now" | "30" | "60"
+    created_at: datetime
+
+
+@dataclass
+class SlotMember:
+    slot_id: str
+    user_id: str  # instagram handle for MVP
+    joined_at: datetime
+
+
+# In-memory storage for MVP; simplest possible and mirrors existing style.
+waiting_slots: Dict[tuple[str, str], WaitingSlot] = {}  # key: (restaurant_id, time_bucket)
+slot_members: Dict[str, List[SlotMember]] = {}  # key: slot_id -> members
+
+# Static locations + restaurants for waiting board MVP (UI driven).
+locations: List[Location] = [
+    Location(id="center", name="Center"),
+    Location(id="kardeljeva", name="Kardeljeva"),
+    Location(id="vic", name="Vič"),
+    Location(id="siska", name="Šiška"),
+]
+
+restaurants: List[Restaurant] = [
+    Restaurant(id="center-fdv", name="Menza FDV", location_id="center", area_id="center"),
+    Restaurant(id="center-ff", name="Menza FF/FDV", location_id="center", area_id="center", subtitle="Aškerčeva"),
+    Restaurant(id="kardeljeva-porcia", name="Menza Kardeljeva", location_id="kardeljeva", area_id="kardeljeva"),
+    Restaurant(id="kardeljeva-agp", name="Menza AGP", location_id="kardeljeva", area_id="kardeljeva"),
+    Restaurant(id="vic-men", name="Menza Vič", location_id="vic", area_id="vic"),
+    Restaurant(id="siska-men", name="Menza Šiška", location_id="siska", area_id="siska"),
+]
+
+
+def list_locations() -> List[Location]:
+    return locations
+
+
+def list_restaurants(location_id: str | None = None, area_id: str | None = None) -> List[Restaurant]:
+    result = restaurants
+    if location_id:
+        loc_norm = _normalize_location(location_id)
+        result = [r for r in result if _normalize_location(r.location_id) == loc_norm]
+    if area_id:
+        area_norm = _normalize_location(area_id)
+        result = [r for r in result if _normalize_location(r.area_id) == area_norm]
+    return result
+
+
+def get_restaurant(restaurant_id: str) -> Optional[Restaurant]:
+    rid = (restaurant_id or "").strip().lower()
+    for r in restaurants:
+        if r.id.lower() == rid:
+            return r
+    return None
+
+
+def _get_or_create_slot(restaurant_id: str, time_bucket: str) -> WaitingSlot:
+    key = (restaurant_id, time_bucket)
+    slot = waiting_slots.get(key)
+    if slot:
+        return slot
+    slot = WaitingSlot(
+        id=uuid.uuid4().hex[:10],
+        restaurant_id=restaurant_id,
+        time_bucket=time_bucket,
+        created_at=datetime.now(timezone.utc),
+    )
+    waiting_slots[key] = slot
+    return slot
+
+
+def _get_members(slot_id: str) -> List[SlotMember]:
+    return slot_members.get(slot_id, [])
+
+
+def _find_member_slot(restaurant_id: str, user_norm: str) -> Optional[tuple[WaitingSlot, SlotMember]]:
+    """Return current slot + member if user is already in any bucket for the restaurant."""
+    for tb in ["now", "30", "60"]:
+        slot = waiting_slots.get((restaurant_id, tb))
+        if not slot:
+            continue
+        for m in _get_members(slot.id):
+            if _normalize_instagram(m.user_id) == user_norm:
+                return slot, m
+    return None
+
+
+def cleanup_waiting_board(now: datetime | None = None) -> None:
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=WAITING_MEMBER_TTL_MIN)
+
+    with match_lock:
+        for slot_id in list(slot_members.keys()):
+            members = slot_members.get(slot_id, [])
+            fresh_members: List[SlotMember] = []
+            for m in members:
+                joined_at = m.joined_at
+                if joined_at.tzinfo is None:
+                    joined_at = joined_at.replace(tzinfo=timezone.utc)
+                if joined_at >= cutoff:
+                    fresh_members.append(m)
+            if fresh_members:
+                slot_members[slot_id] = fresh_members
+            else:
+                slot_members.pop(slot_id, None)
+
+        for key in list(waiting_slots.keys()):
+            slot = waiting_slots.get(key)
+            if not slot:
+                continue
+            members = slot_members.get(slot.id)
+            if not members:
+                waiting_slots.pop(key, None)
+
+
+def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
+    """Join (or move) a waiting slot; idempotent; auto-move across buckets."""
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return {"ok": False, "error": "invalid_time_bucket"}
+    restaurant_id = (restaurant_id or "").strip().lower()
+    user_norm = _normalize_instagram(user_id)
+
+    cleanup_waiting_board()
+
+    with match_lock:
+        # Remove from other bucket if present
+        existing = _find_member_slot(restaurant_id, user_norm)
+        if existing:
+            slot_prev, member_prev = existing
+            slot_members[slot_prev.id] = [m for m in _get_members(slot_prev.id) if m is not member_prev]
+
+        slot = _get_or_create_slot(restaurant_id, time_bucket)
+        members = slot_members.setdefault(slot.id, [])
+
+        for m in members:
+            if _normalize_instagram(m.user_id) == user_norm:
+                return {"ok": True, "slot_id": slot.id, "already": True, "moved": bool(existing)}
+
+        members.append(SlotMember(slot_id=slot.id, user_id=user_norm, joined_at=datetime.now(timezone.utc)))
+    waiting_board_logger.info(
+        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s",
+        restaurant_id,
+        time_bucket,
+        user_norm,
+        existing[0].time_bucket if existing else None,
+    )
+    return {"ok": True, "slot_id": slot.id, "moved": bool(existing)}
+
+
+def leave_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return {"ok": False, "error": "invalid_time_bucket"}
+    restaurant_id = (restaurant_id or "").strip().lower()
+    key = (restaurant_id, time_bucket)
+    user_norm = _normalize_instagram(user_id)
+
+    cleanup_waiting_board()
+
+    with match_lock:
+        slot = waiting_slots.get(key)
+        if not slot:
+            return {"ok": True, "slot_id": None}
+
+        members = slot_members.get(slot.id, [])
+        before = len(members)
+        members = [m for m in members if _normalize_instagram(m.user_id) != user_norm]
+        slot_members[slot.id] = members
+    waiting_board_logger.info(
+        "leave_slot restaurant=%s time_bucket=%s user=%s removed=%s",
+        restaurant_id,
+        time_bucket,
+        user_norm,
+        before != len(members),
+    )
+    return {"ok": True, "slot_id": slot.id}
+
+
+def get_waiting_board(restaurant_id: str) -> dict:
+    """Return per-time-bucket member counts and handles for a restaurant."""
+    restaurant_id = (restaurant_id or "").strip().lower()
+
+    cleanup_waiting_board()
+
+    with match_lock:
+        board = {}
+        for tb in ["now", "30", "60"]:
+            slot = _get_or_create_slot(restaurant_id, tb)
+            members = _get_members(slot.id)
+            board[tb] = {
+                "slot_id": slot.id,
+                "count": len(members),
+                "members": [m.user_id for m in members],
+            }
+    return board
+
+
+def get_waiting_total(restaurant_id: str) -> int:
+    board = get_waiting_board(restaurant_id)
+    return sum(board[tb]["count"] for tb in board)
+
+
+def get_total_waiting_all() -> int:
+    total = 0
+    for r in restaurants:
+        total += get_waiting_total(r.id)
+    return total
+
+
+def get_waiting_count_all(time_bucket: str) -> int:
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return 0
+    total = 0
+    for r in restaurants:
+        total += get_waiting_count(r.id, time_bucket)
+    return total
+
+
+def get_waiting_members(restaurant_id: str, time_bucket: str) -> List[str]:
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return []
+    board = get_waiting_board(restaurant_id)
+    slot = board.get(time_bucket) or {}
+    members = slot.get("members") or []
+    # normalize to single '@' prefix when shown
+    normalized = []
+    for m in members:
+        s = (m or "").strip()
+        if s.startswith("@"):
+            s = s.lstrip("@")
+        normalized.append(s)
+    return normalized
+
+
+def get_waiting_count(restaurant_id: str, time_bucket: str) -> int:
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return 0
+    board = get_waiting_board(restaurant_id)
+    slot = board.get(time_bucket) or {}
+    return int(slot.get("count") or 0)
+
+
+def get_top_active_restaurants(time_bucket: str, limit: int = 5, area_id: str | None = None) -> List[dict[str, Any]]:
+    if time_bucket not in ALLOWED_TIME_BUCKETS:
+        return []
+    rows = []
+    candidate_restaurants = list_restaurants(area_id=area_id) if area_id else restaurants
+    for r in candidate_restaurants:
+        cnt = get_waiting_count(r.id, time_bucket)
+        if cnt <= 0:
+            continue
+        rows.append({"restaurant": r, "count": cnt, "members": get_waiting_members(r.id, time_bucket)})
+    rows.sort(key=lambda x: (-x["count"], x["restaurant"].name.lower()))
+    return rows[:limit]
+
+
+# Top restaurants by total waiting across all buckets (now+30+60)
+def get_top_active_restaurants_total(limit: int = 3) -> List[dict[str, Any]]:
+    """Top restaurants by total waiting across all buckets (now+30+60)."""
+    rows: List[dict[str, Any]] = []
+    for r in restaurants:
+        total = get_waiting_total(r.id)
+        if total <= 0:
+            continue
+        rows.append({"restaurant": r, "total_waiting": total})
+    rows.sort(key=lambda x: (-x["total_waiting"], x["restaurant"].name.lower()))
+    return rows[:limit]
+
+
+def get_user_bucket(restaurant_id: str, user_id: str) -> Optional[str]:
+    """Return the bucket (now/30/60) where user is present for this restaurant."""
+    restaurant_id = (restaurant_id or "").strip().lower()
+    user_norm = _normalize_instagram(user_id)
+    found = _find_member_slot(restaurant_id, user_norm)
+    return found[0].time_bucket if found else None
+
+
+def get_waiting_summary_for_location(location_id: str) -> List[dict[str, Any]]:
+    """Return list of restaurants in location with aggregated counts."""
+    loc_norm = _normalize_location(location_id)
+    result: List[dict[str, Any]] = []
+    for r in list_restaurants(loc_norm):
+        board = get_waiting_board(r.id)
+        total = sum((board[tb]["count"] for tb in board))
+        result.append(
+            {
+                "restaurant": r,
+                "board": board,
+                "total_waiting": total,
+            }
+        )
+    return result
 
 # --- GA4 (Measurement Protocol) ---
 # Nastavi v Railway env vars:

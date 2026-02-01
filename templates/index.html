@@ -152,6 +152,20 @@
       color: var(--muted);
       text-align: center;
     }
+
+    /* Waiting board home */
+    .chip-row{display:flex; gap:10px; align-items:center; margin:0 0 12px; flex-wrap:wrap;}
+    .chip-row--area{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling: touch; padding-bottom:4px;}
+    .chip{height:44px; padding:0 16px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color:var(--text); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap;}
+    .chip--active{border-color: rgba(106,166,255,0.8); background: rgba(106,166,255,0.16); color:var(--text);}
+    .list{display:flex; flex-direction:column; gap:10px;}
+    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); text-decoration:none;}
+    .rest-info{flex:1;}
+    .rest-name{font-size:15px; font-weight:600;}
+    .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
+    .who{font-size:13px; color: var(--muted); margin-top:6px;}
+    .badge{padding:8px 10px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid var(--border); font-weight:700; font-size:13px; margin-left:10px;}
+    .muted{color: var(--muted);}
   </style>
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
@@ -165,58 +179,123 @@
 </head>
 <body>
   <div class="card">
-    <h1>🍽️ BoniBuddy</h1>
-    <div class="subtitle">Greš na bone?
-      Spoznaj nekoga novega 🥳<br>
-      Matchi 11-12 🕣</div>
+    {% if feature_waiting_board %}
+      {% include "_active_plan.html" %}
+      <h1 style="margin-bottom:6px;">Greš na bone? 🍽️</h1>
+      <div class="subtitle">Izberi čas in lokacijo — in poglej, kdo gre istočasno.</div>
+      {% if total_waiting > 0 %}
+        <div class="subtitle muted">Trenutno gre {{ total_waiting }} študentov 🍽️</div>
+      {% else %}
+        <div class="subtitle muted">Za ta čas še ni nikogar — lahko začneš ti 👀</div>
+      {% endif %}
 
-    {% if error %}
-      <div class="error">{{ error }}</div>
-    {% endif %}
-
-    <form method="post" action="/go" onsubmit="gtag('event','submit_form');">
-      <input type="hidden" name="city" id="city" value="ljubljana">
-      <input type="hidden" name="gender" value="female">
-
-      <div class="field">
-        <label>Kdaj približno?</label>
-        <select name="time_bucket" required>
-          <option value="soon">Za kosilo 🍝</option>
-          <option value="today">Za večerjo 🍕</option>
-        </select>
+      <div class="muted" style="margin-top:14px; margin-bottom:6px;">Kdaj greš?</div>
+      <div class="chip-row chip-row--time">
+        <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now&area={{ selected_area }}">Zdaj</a>
+        <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30&area={{ selected_area }}">+30</a>
+        <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60&area={{ selected_area }}">+60</a>
       </div>
 
-      <div class="field">
-        <label>Lokacija (ljubljanski študentski domovi)</label>
-        <select name="location" id="location" required></select>
+      <div class="muted" style="margin-top:6px; margin-bottom:6px;">Kje?</div>
+      <div class="chip-row chip-row--area" style="margin-bottom:18px;">
+        {% for opt in area_options %}
+          <a class="chip {% if opt.id == selected_area %}chip--active{% endif %}" href="/?t={{ selected_t }}&area={{ opt.id }}">
+            {{ opt.label }}
+          </a>
+        {% endfor %}
       </div>
 
-      <input type="hidden" name="match_pref" value="any">
+      {% set rows = top_active if top_active else fallback_list %}
+      {% if top_active %}
+        <div class="muted" style="margin-bottom:6px;">Aktivno trenutno</div>
+      {% endif %}
+      {% if rows %}
+        <div class="list">
+          {% for item in rows %}
+            <a class="rest-row" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1">
+              <div class="rest-info">
+                <div class="rest-name">{{ item.restaurant.name }}</div>
+                <div class="rest-sub">{{ item.restaurant.subtitle or area_labels.get(item.restaurant.area_id, item.restaurant.area_id) }}</div>
+                {% if item.count > 0 %}
+                  {% set handles = item.members %}
+                  {% set display_handles = handles[:2] %}
+                  {% set extra = handles|length - display_handles|length %}
+                  <div class="who">
+                    {% for h in display_handles %}
+                      @{{ h }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                    {% if extra > 0 %}+{{ extra }}{% endif %}
+                  </div>
+                {% else %}
+                  <div class="who muted">Za ta čas še ni objav.</div>
+                {% endif %}
+              </div>
+              <div class="badge">
+                {% if item.count == 1 %}1 gre{% elif item.count == 0 %}0 gre{% else %}{{ item.count }} gredo{% endif %}
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="muted" style="margin-top:10px;">Za ta čas še ni nikogar — lahko začneš ti 👀</div>
+      {% endif %}
+    {% else %}
+      <h1>🍽️ BoniBuddy</h1>
+      <div class="subtitle">Greš na bone?
+        Spoznaj nekoga novega 🥳<br>
+        Matchi 11-12 🕣</div>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/go" onsubmit="gtag('event','submit_form');">
+        <input type="hidden" name="city" id="city" value="ljubljana">
+        <input type="hidden" name="gender" value="female">
+
+        <div class="field">
+          <label>Kdaj približno?</label>
+          <select name="time_bucket" required>
+            <option value="soon">Za kosilo 🍝</option>
+            <option value="today">Za večerjo 🍕</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Lokacija (ljubljanski študentski domovi)</label>
+          <select name="location" id="location" required></select>
+        </div>
+
+        <input type="hidden" name="match_pref" value="any">
 
 
-      <div class="field">
-        <label class="ig-label">
-          <svg class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M7.75 3h8.5A4.75 4.75 0 0 1 21 7.75v8.5A4.75 4.75 0 0 1 16.25 21h-8.5A4.75 4.75 0 0 1 3 16.25v-8.5A4.75 4.75 0 0 1 7.75 3Zm0 1.5A3.25 3.25 0 0 0 4.5 7.75v8.5A3.25 3.25 0 0 0 7.75 19.5h8.5A3.25 3.25 0 0 0 19.5 16.25v-8.5A3.25 3.25 0 0 0 16.25 4.5h-8.5Zm8.75 1.25a.75.75 0 1 1 1.5 0v1a.75.75 0 1 1-1.5 0v-1ZM12 7.25A4.75 4.75 0 1 1 7.25 12 4.75 4.75 0 0 1 12 7.25Zm0 1.5A3.25 3.25 0 1 0 15.25 12 3.25 3.25 0 0 0 12 8.75Z"/>
-          </svg>
-          Instagram username
+        <div class="field">
+          <label class="ig-label">
+            <svg class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M7.75 3h8.5A4.75 4.75 0 0 1 21 7.75v8.5A4.75 4.75 0 0 1 16.25 21h-8.5A4.75 4.75 0 0 1 3 16.25v-8.5A4.75 4.75 0 0 1 7.75 3Zm0 1.5A3.25 3.25 0 0 0 4.5 7.75v8.5A3.25 3.25 0 0 0 7.75 19.5h8.5A3.25 3.25 0 0 0 19.5 16.25v-8.5A3.25 3.25 0 0 0 16.25 4.5h-8.5Zm8.75 1.25a.75.75 0 1 1 1.5 0v1a.75.75 0 1 1-1.5 0v-1ZM12 7.25A4.75 4.75 0 1 1 7.25 12 4.75 4.75 0 0 1 12 7.25Zm0 1.5A3.25 3.25 0 1 0 15.25 12 3.25 3.25 0 0 0 12 8.75Z"/>
+            </svg>
+            Instagram username
+          </label>
+          <input name="instagram_username" type="text" placeholder="Vstavi svoj Instagram username" required>
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" name="consent" value="yes" required>
+          <span>Strinjam se, da se moj Instagram deli samo ob uspešnem matchu.</span>
         </label>
-        <input name="instagram_username" type="text" placeholder="Vstavi svoj Instagram username" required>
+
+        <button type="submit" class="btn">Najdi družbo</button>
+      </form>
+
+      <div class="foot">
+         Podatkov ne shranjujemo trajno • brez profilov
       </div>
-
-      <label class="consent">
-        <input type="checkbox" name="consent" value="yes" required>
-        <span>Strinjam se, da se moj Instagram deli samo ob uspešnem matchu.</span>
-      </label>
-
-      <button type="submit" class="btn">Najdi družbo</button>
-    </form>
-
-    <div class="foot">
-       Podatkov ne shranjujemo trajno • brez profilov
-    </div>
+    {% endif %}
   </div>
 <script>
+  {% if feature_waiting_board %}
+    // no extra JS needed for waiting board landing
+  {% else %}
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/static/sw.js').catch(() => {
@@ -247,6 +326,7 @@
 
   // init
   renderLocations();
+  {% endif %}
 </script>
 </body>
 </html>
