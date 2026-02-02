@@ -24,7 +24,8 @@ waiting_board_logger = logging.getLogger("bonibuddy.waiting_board")
 # rid -> PushSubscription JSON (as received from the browser)
 PUSH_SUBSCRIPTIONS: Dict[str, Dict[str, Any]] = {}
 
-REQUEST_TTL_SECONDS = 60 * 60  # 60 minutes
+REQUEST_TTL_SECONDS = 60 * 60  # Legacy; no longer used for expiry logic.
+GRACE_MINUTES = 30  # extra time after target_time before a request expires
 
 # Serializes access to the waiting pool + pairing to avoid double matches.
 match_lock = threading.Lock()
@@ -143,6 +144,7 @@ class SlotMember:
     slot_id: str
     user_id: str  # instagram handle for MVP
     joined_at: datetime
+    initial_time_bucket: str  # stores the bucket user selected when joining
 
 
 # In-memory storage for MVP; simplest possible and mirrors existing style.
@@ -310,6 +312,23 @@ def cleanup_waiting_board(now: datetime | None = None) -> None:
     cutoff = now - timedelta(minutes=WAITING_MEMBER_TTL_MIN)
 
     with match_lock:
+        slot_by_id = {slot.id: slot for slot in waiting_slots.values()}
+        slot_restaurant_by_id = {slot.id: restaurant_id for (restaurant_id, _tb), slot in waiting_slots.items()}
+
+        def desired_bucket(initial_bucket: str, joined_at: datetime) -> str:
+            """Return the bucket where this member should currently live."""
+            elapsed_min = (now - joined_at).total_seconds() / 60
+            initial_bucket = initial_bucket if initial_bucket in ALLOWED_TIME_BUCKETS else "now"
+            if initial_bucket == "60":
+                if elapsed_min >= 60:
+                    return "now"
+                if elapsed_min >= 30:
+                    return "30"
+                return "60"
+            if initial_bucket == "30":
+                return "now" if elapsed_min >= 30 else "30"
+            return "now"
+
         for slot_id in list(slot_members.keys()):
             members = slot_members.get(slot_id, [])
             fresh_members: List[SlotMember] = []
@@ -317,7 +336,26 @@ def cleanup_waiting_board(now: datetime | None = None) -> None:
                 joined_at = m.joined_at
                 if joined_at.tzinfo is None:
                     joined_at = joined_at.replace(tzinfo=timezone.utc)
-                if joined_at >= cutoff:
+                if joined_at < cutoff:
+                    continue
+
+                slot = slot_by_id.get(slot_id)
+                current_bucket = slot.time_bucket if slot else m.initial_time_bucket
+                target_bucket = desired_bucket(m.initial_time_bucket, joined_at)
+
+                if target_bucket != current_bucket:
+                    # Move member into the correct bucket (create slot if needed).
+                    restaurant_id = slot_restaurant_by_id.get(slot_id)
+                    if restaurant_id:
+                        target_slot = _get_or_create_slot(restaurant_id, target_bucket)
+                        slot_by_id[target_slot.id] = target_slot
+                        slot_restaurant_by_id[target_slot.id] = restaurant_id
+                        m.slot_id = target_slot.id
+                        slot_members.setdefault(target_slot.id, []).append(m)
+                    else:
+                        # If we can't resolve restaurant, keep member in current slot.
+                        fresh_members.append(m)
+                else:
                     fresh_members.append(m)
             if fresh_members:
                 slot_members[slot_id] = fresh_members
@@ -356,7 +394,14 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
             if _normalize_instagram(m.user_id) == user_norm:
                 return {"ok": True, "slot_id": slot.id, "already": True, "moved": bool(existing)}
 
-        members.append(SlotMember(slot_id=slot.id, user_id=user_norm, joined_at=datetime.now(timezone.utc)))
+        members.append(
+            SlotMember(
+                slot_id=slot.id,
+                user_id=user_norm,
+                joined_at=datetime.now(timezone.utc),
+                initial_time_bucket=time_bucket,
+            )
+        )
     waiting_board_logger.info(
         "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s",
         restaurant_id,
@@ -566,6 +611,7 @@ class Request:
     created_at: datetime
     location: str
     when: datetime
+    target_time: datetime
     time_bucket: str  # "soon" | "today"
     instagram: str  # Instagram handle (brez @)
     city: str  # "ljubljana" | "maribor"
@@ -621,19 +667,25 @@ def _invalidate_waiting_by_instagram(instagram: str) -> None:
             match_logger.info("request_invalidated rid=%s instagram=%s", other_rid, instagram)
 
 
+def _expires_at(req: "Request") -> datetime:
+    """Return absolute expiry timestamp for a request (target_time + grace)."""
+    return req.target_time + timedelta(minutes=GRACE_MINUTES)
+
+
+def _is_request_expired(req: "Request", now: datetime) -> bool:
+    expires = _expires_at(req)
+    return now > expires or not getattr(req, "active", True)
+
+
 def cleanup_expired() -> None:
-    """Expire waiting requests older than REQUEST_TTL_SECONDS."""
+    """Expire requests whose target window + grace has passed."""
     now = datetime.now()
-    cutoff = now - timedelta(seconds=REQUEST_TTL_SECONDS)
     for rid in list(waiting):
         req = requests.get(rid)
         if not req:
             _remove_from_waiting(rid)
             continue
-        if not getattr(req, "active", True):
-            _remove_from_waiting(rid)
-            continue
-        if req.created_at < cutoff:
+        if _is_request_expired(req, now):
             req.active = False
             _remove_from_waiting(rid)
             match_logger.info("request_expired rid=%s instagram=%s", rid, req.instagram)
@@ -646,12 +698,15 @@ def _close_in_time(a: datetime, b: datetime) -> bool:
 
 def _cleanup() -> None:
     now = datetime.now()
-    cutoff = now - timedelta(minutes=EXPIRE_MIN)
-    to_delete = [rid for rid, r in requests.items() if r.created_at < cutoff]
+    to_delete = [rid for rid, r in requests.items() if _is_request_expired(r, now)]
     for rid in to_delete:
         requests.pop(rid, None)
     # počisti waiting
-    alive = [rid for rid in waiting if rid in requests and requests[rid].active]
+    alive = [
+        rid
+        for rid in waiting
+        if rid in requests and requests[rid].active and not _is_request_expired(requests[rid], now)
+    ]
     waiting.clear()
     waiting.extend(alive)
     # počisti paired (da ne ostanejo "ghost" matchi)
@@ -676,6 +731,7 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
         created_at=datetime.now(),
         location=location_norm,
         when=when,
+        target_time=when,
         time_bucket="soon",
         instagram=instagram_norm,
         city="ljubljana",
@@ -747,11 +803,12 @@ def add_request(*, location: str, when: datetime, instagram: str) -> Dict[str, A
 def check_status(rid: str) -> Dict[str, Any]:
     """Preveri ali je rid še v čakanju ali je matchan."""
     cleanup_expired()
+    now = datetime.now()
     if rid in paired:
         return {"status": "matched", "rid": rid, **paired[rid]}
     if rid not in requests:
         return {"status": "expired"}
-    if not requests[rid].active:
+    if not requests[rid].active or _is_request_expired(requests[rid], now):
         return {"status": "expired"}
 
     # če ni v waiting, pomeni: ali je matchan ali je bil odstranjen
@@ -786,6 +843,7 @@ def add_request_with_pairs(
         created_at=datetime.now(),
         location=location_norm,
         when=when,
+        target_time=when,
         time_bucket=time_bucket,
         instagram=instagram_norm,
         city=city,
