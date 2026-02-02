@@ -263,85 +263,13 @@
 
       </div>
     {% else %}
-      <h1>🍽️ BoniBuddy</h1>
-      <div class="subtitle">Greš na bone?
-        Spoznaj nekoga novega 🥳<br>
-        Matchi 11-12 🕣</div>
-
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
-
-      <form method="post" action="/go" onsubmit="gtag('event','submit_form');">
-        <input type="hidden" name="city" id="city" value="ljubljana">
-        <input type="hidden" name="gender" value="female">
-
-        <div class="field">
-          <label>Kdaj približno?</label>
-          <select name="time_bucket" required>
-            <option value="soon">Za kosilo 🍝</option>
-            <option value="today">Za večerjo 🍕</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Lokacija (ljubljanski študentski domovi)</label>
-          <select name="location" id="location" required></select>
-        </div>
-
-        <input type="hidden" name="match_pref" value="any">
-
-
-        <div class="field">
-          <label class="ig-label">
-            <svg class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M7.75 3h8.5A4.75 4.75 0 0 1 21 7.75v8.5A4.75 4.75 0 0 1 16.25 21h-8.5A4.75 4.75 0 0 1 3 16.25v-8.5A4.75 4.75 0 0 1 7.75 3Zm0 1.5A3.25 3.25 0 0 0 4.5 7.75v8.5A3.25 3.25 0 0 0 7.75 19.5h8.5A3.25 3.25 0 0 0 19.5 16.25v-8.5A3.25 3.25 0 0 0 16.25 4.5h-8.5Zm8.75 1.25a.75.75 0 1 1 1.5 0v1a.75.75 0 1 1-1.5 0v-1ZM12 7.25A4.75 4.75 0 1 1 7.25 12 4.75 4.75 0 0 1 12 7.25Zm0 1.5A3.25 3.25 0 1 0 15.25 12 3.25 3.25 0 0 0 12 8.75Z"/>
-            </svg>
-            Instagram username
-          </label>
-          <input name="instagram_username" type="text" placeholder="Vstavi svoj Instagram username" required>
-        </div>
-
-        <label class="consent">
-          <input type="checkbox" name="consent" value="yes" required>
-          <span>Strinjam se, da se moj Instagram deli samo ob uspešnem matchu.</span>
-        </label>
-
-        <button type="submit" class="btn">Najdi družbo</button>
-      </form>
-
-      <div class="foot">
-         Podatkov ne shranjujemo trajno • brez profilov
-      </div>
+      <h1 style="margin-bottom:6px;">Greš na bone? 🍽️</h1>
+      <div class="subtitle">Ta stran je posodobljena — prosim osveži ali pojdi na domačo.</div>
+      <a class="chip chip--active" href="/">Nazaj na začetek</a>
     {% endif %}
   </div>
 <script>
-  {% if feature_waiting_board %}
-    (function() {
-      const searchInput = document.getElementById('restSearch');
-      const list = document.getElementById('restaurantList');
-      const noResults = document.getElementById('noResults');
-      if (!searchInput || !list) return;
-
-      const items = Array.from(list.querySelectorAll('[data-name]'));
-
-      function applyFilter() {
-        const q = searchInput.value.trim().toLowerCase();
-        let visible = 0;
-        items.forEach(item => {
-          const name = item.dataset.name || '';
-          const sub = item.dataset.subtitle || '';
-          const match = !q || name.includes(q) || sub.includes(q);
-          item.style.display = match ? '' : 'none';
-          if (match) visible++;
-        });
-        if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
-      }
-
-      searchInput.addEventListener('input', applyFilter);
-      applyFilter();
-    })();
-  {% else %}
+  // Service worker (best-effort)
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/static/sw.js').catch(() => {
@@ -349,30 +277,50 @@
       });
     });
   }
-</script>
-<script>
-  const DORMS = [
-    { value: "rozna", label: "Rožna dolina" },
-    { value: "kardeljeva", label: "Kardeljeva ploščad" },
-    { value: "center", label: "Center" },
-    { value: "mestni_log", label: "Mestni log" },
-  ];
 
-  const locationSelect = document.getElementById("location");
+  // Waiting-board live filter
+  {% if feature_waiting_board %}
+  (function() {
+    const searchInput = document.getElementById('restSearch');
+    const list = document.getElementById('restaurantList');
+    const noResults = document.getElementById('noResults');
+    if (!searchInput || !list) return;
 
-  function renderLocations(){
-    locationSelect.innerHTML = "";
-    DORMS.forEach(l => {
-      const opt = document.createElement("option");
-      opt.value = l.value;
-      opt.textContent = l.label;
-      locationSelect.appendChild(opt);
-    });
-  }
+    const items = Array.from(list.querySelectorAll('[data-name]'));
 
-  // init
-  renderLocations();
-  {% endif %}
+    function applyFilter() {
+      const q = searchInput.value.trim().toLowerCase();
+      let visible = 0;
+      items.forEach(item => {
+        const name = item.dataset.name || '';
+        const sub = item.dataset.subtitle || '';
+        const match = !q || name.includes(q) || sub.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+    }
+
+  searchInput.addEventListener('input', applyFilter);
+  applyFilter();
+})();
+
+// GA: search_used — first non-empty search interaction (once per load)
+(function() {
+  const input = document.getElementById('restSearch');
+  if (!input) return;
+  let sent = false;
+  input.addEventListener('input', () => {
+    if (sent) return;
+    const len = (input.value || '').trim().length;
+    if (len === 0) return;
+    sent = true;
+    if (typeof window.gtag === 'function') {
+      gtag('event', 'search_used', { query_length: len });
+    }
+  });
+})();
+{% endif %}
 </script>
 </body>
 </html>

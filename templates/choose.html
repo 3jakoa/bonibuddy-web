@@ -108,6 +108,22 @@
         });
       }
     })();
+
+    // GA: search_used — fire once on first non-empty input
+    (function() {
+      const input = document.querySelector('.search-bar input[name=\"q\"]');
+      if (!input) return;
+      let sent = false;
+      input.addEventListener('input', () => {
+        if (sent) return;
+        const len = (input.value || '').trim().length;
+        if (len === 0) return;
+        sent = true;
+        if (typeof window.gtag === 'function') {
+          gtag('event', 'search_used', { query_length: len });
+        }
+      });
+    })();
   </script>
 </body>
 </html>

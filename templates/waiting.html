@@ -259,6 +259,23 @@
           });
           updateSelection(selected);
         })();
+
+        // GA: slot_filled — fire once when join form is submitted
+        (function() {
+          const form = document.getElementById('joinForm');
+          if (!form) return;
+          let sent = false;
+          form.addEventListener('submit', () => {
+            if (sent || typeof window.gtag !== 'function') return;
+            sent = true;
+            const restaurantId = form.querySelector('input[name=\"restaurant_id\"]')?.value || undefined;
+            const timeBucket = form.querySelector('input[name=\"time_bucket\"]')?.value || undefined;
+            gtag('event', 'slot_filled', {
+              restaurant_id: restaurantId,
+              time_bucket: timeBucket,
+            });
+          });
+        })();
       </script>
     {% else %}
       <h1 id="heading">Čakamo še na koga 👀</h1>
@@ -473,6 +490,17 @@
             }
           });
         }
+
+        // GA: open_instagram for polling-based match CTA
+        const igLink = statusEl.querySelector('a.btn[target=\"_blank\"]');
+        if (igLink && typeof window.gtag === 'function') {
+          igLink.addEventListener('click', () => {
+            gtag('event', 'open_instagram', {
+              source: 'poll_match',
+              restaurant_id: '{{ restaurant_id }}' || undefined,
+            });
+          }, { once: true });
+        }
         return;
       }
 
@@ -488,7 +516,48 @@
     }
 
     poll();
-</script>
-{% endif %}
-</body>
-</html>
+
+    // GA: fire slot_filled once per join submit
+    (function() {
+      const form = document.getElementById('joinForm');
+      let sent = false;
+      if (!form) return;
+      form.addEventListener('submit', () => {
+        if (sent || typeof window.gtag !== 'function') return;
+        sent = true;
+        const restaurantId = form.querySelector('input[name="restaurant_id"]')?.value || undefined;
+        const timeBucket = form.querySelector('input[name="time_bucket"]')?.value || undefined;
+        gtag('event', 'slot_filled', {
+          restaurant_id: restaurantId,
+          time_bucket: timeBucket,
+        });
+      }, { once: false });
+    })();
+
+    // GA: ensure open_instagram fires for polling-based match UI
+    (function() {
+      const restaurantId = '{{ restaurant_id }}';
+      const originalStatus = document.getElementById('status');
+      const origPoll = poll;
+
+      // wrap poll success branch to insert tracking on injected button
+      poll = async function wrappedPoll() {
+        await origPoll.apply(this, arguments);
+        // Attach handler if polling injected the CTA
+        const igLink = originalStatus?.querySelector('a.btn[target="_blank"]');
+        if (igLink && !igLink.dataset.gaBound) {
+          igLink.dataset.gaBound = '1';
+          igLink.addEventListener('click', () => {
+            if (typeof window.gtag !== 'function') return;
+            gtag('event', 'open_instagram', {
+              source: 'poll_match',
+              restaurant_id: restaurantId || undefined,
+            });
+          });
+        }
+      }
+    })();
+  </script>
+  {% endif %}
+  </body>
+  </html>
