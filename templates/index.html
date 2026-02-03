@@ -239,15 +239,7 @@
                   <div class="rest-name">{{ item.restaurant.name }}</div>
                   <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
                   {% if is_active %}
-                    {% set handles = item.members %}
-                    {% set display_handles = handles[:2] %}
-                    {% set extra = handles|length - display_handles|length %}
-                    <div class="who">
-                      {% for h in display_handles %}
-                        @{{ h }}{% if not loop.last %}, {% endif %}
-                      {% endfor %}
-                      {% if extra > 0 %}+{{ extra }}{% endif %}
-                    </div>
+                    <div class="who" aria-hidden="true">&nbsp;</div>
                   {% else %}
                     <div class="who muted">Za ta čas še ni objav.</div>
                   {% endif %}
