@@ -6,25 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
-      --bg: #0b1220;
-      --card: rgba(255,255,255,0.08);
-      --card2: rgba(255,255,255,0.06);
-      --text: rgba(255,255,255,0.95);
-      --muted: rgba(255,255,255,0.65);
-      --border: rgba(255,255,255,0.14);
-      --accent: #6aa6ff;
+      --bg: #F6FBFE;
+      --card: #ffffff;
+      --card2: #ffffff;
+      --text: #111111;
+      --muted: #5F6F7A;
+      --disabled: #9ca3af;
+      --border: rgba(0,166,246,0.18);
+      --accent: #00A6F6;
+      --accent-light: #92DBF3;
       --radius: 18px;
-      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+      --shadow: 0 12px 32px rgba(0,166,246,0.10);
     }
     *{box-sizing:border-box;}
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: var(--text);
-      background:
-        radial-gradient(900px 600px at 20% 0%, rgba(106,166,255,0.22), transparent 60%),
-        radial-gradient(900px 600px at 90% 10%, rgba(65,209,139,0.18), transparent 60%),
-        var(--bg);
+      background: var(--bg);
       min-height: 100vh;
       display:flex;
       align-items:center;
@@ -34,7 +33,7 @@
     .card{
       width:100%;
       max-width:460px;
-      background: linear-gradient(180deg, var(--card), var(--card2));
+      background: var(--card);
       border:1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -43,12 +42,14 @@
     }
     h1{margin:0 0 8px; font-size:22px;}
     .subtitle{color:var(--muted); font-size:14px; margin-bottom:16px;}
-    .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.07); font-size:12px; color:var(--text);}
-    .btn{display:block; width:100%; text-align:center; padding:14px 14px; border-radius:14px; border:1px solid var(--border); background: linear-gradient(135deg, #6aa6ff, #7dd3a8); color:#081018; font-weight:700; text-decoration:none; margin-top:12px;}
-    .btn-secondary{display:block; width:100%; text-align:center; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color:rgba(255,255,255,0.9); font-weight:600; text-decoration:none; margin-top:8px;}
-    .btn-secondary:hover{border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);}
-    .link{display:block; margin-top:12px; color:var(--muted); text-decoration:none; font-size:13px;}
-    .preview-box{margin-top:8px; border:1px solid var(--border); background: rgba(255,255,255,0.05); border-radius:12px; padding:10px 12px; font-size:13px; color:var(--muted); line-height:1.35;}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid #92DBF3; background: #EAF7FD; font-size:12px; color:#007FBF; box-shadow: 0 6px 16px rgba(0,166,246,0.08);}
+    .btn{display:block; width:100%; text-align:center; padding:14px 14px; border-radius:14px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; margin-top:12px; transition: background 0.2s ease; box-shadow: 0 6px 16px rgba(0,166,246,0.12);}
+    .btn:hover{background:#008ed5;}
+    .btn-secondary{display:block; width:100%; text-align:center; padding:12px 14px; border-radius:12px; border:1px solid var(--accent); background: #ffffff; color:var(--accent); font-weight:600; text-decoration:none; margin-top:8px; transition: background 0.2s ease, color 0.2s ease;}
+    .btn-secondary:hover{background: color-mix(in srgb, var(--accent-light) 25%, #ffffff 75%); color:#005f8f;}
+    .link{display:block; margin-top:12px; color:var(--accent); text-decoration:none; font-size:13px;}
+    .link:hover{text-decoration:underline; color:#005f8f;}
+    .preview-box{margin-top:8px; border:1px solid var(--border); background: #ffffff; border-radius:12px; padding:10px 12px; font-size:13px; color:var(--muted); line-height:1.35;}
   </style>
 </head>
 <body>
