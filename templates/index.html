@@ -28,12 +28,17 @@
 
     * { box-sizing: border-box; }
 
+    html, body{
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: var(--text);
       background: var(--bg);
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -47,8 +52,13 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 22px 20px 24px;
+      padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
       backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      height: calc(100% - 48px);
+      max-height: calc(100dvh - 48px);
+      min-height: 0;
     }
 
     h1{
@@ -217,7 +227,7 @@
     .chip--active .chip__secondary{color:#DFF2FF;}
     .chip-stack{display:flex; flex-direction:column; align-items:center; gap:8px;}
     .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:2px;}
-    .restaurant-list{max-height:420px; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
+    .restaurant-list{flex:1; min-height:0; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
     .list{display:flex; flex-direction:column; gap:10px;}
     .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color: var(--text); text-decoration:none; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
     .rest-row{background: #F6FCFF; border-color: rgba(0,166,246,0.14); box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
