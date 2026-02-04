@@ -40,92 +40,82 @@
       padding:22px 20px 24px;
       backdrop-filter: blur(10px);
     }
-    h1{margin:0 0 8px; font-size:22px;}
-    .subtitle{color:var(--muted); font-size:14px; margin-bottom:16px;}
-    .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid #92DBF3; background: #EAF7FD; font-size:12px; color:#007FBF; box-shadow: 0 6px 16px rgba(0,166,246,0.08);}
-    .btn{display:block; width:100%; text-align:center; padding:14px 14px; border-radius:14px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; margin-top:12px; transition: background 0.2s ease; box-shadow: 0 6px 16px rgba(0,166,246,0.12);}
+    h1{margin:12px 0 6px; font-size:22px; text-align:center;}
+    .logo-placeholder{
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      background: #EAF7FD;
+      overflow: hidden;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    .logo-placeholder svg{
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .cta-stack{display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:12px;}
+    .btn{display:inline-flex; justify-content:center; align-items:center; min-width:220px; padding:14px 18px; border-radius:14px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; transition: background 0.2s ease; box-shadow: 0 6px 16px rgba(0,166,246,0.12);}
     .btn:hover{background:#008ed5;}
-    .btn-secondary{display:block; width:100%; text-align:center; padding:12px 14px; border-radius:12px; border:1px solid var(--accent); background: #ffffff; color:var(--accent); font-weight:600; text-decoration:none; margin-top:8px; transition: background 0.2s ease, color 0.2s ease;}
+    .btn-secondary{display:inline-flex; justify-content:center; align-items:center; min-width:220px; padding:12px 16px; border-radius:12px; border:1px solid var(--accent); background: #ffffff; color:var(--accent); font-weight:600; text-decoration:none; transition: background 0.2s ease, color 0.2s ease;}
     .btn-secondary:hover{background: color-mix(in srgb, var(--accent-light) 25%, #ffffff 75%); color:#005f8f;}
-    .link{display:block; margin-top:12px; color:var(--accent); text-decoration:none; font-size:13px;}
+    .link{display:inline-block; margin-top:16px; color:var(--accent); text-decoration:none; font-size:13px;}
     .link:hover{text-decoration:underline; color:#005f8f;}
-    .preview-box{margin-top:8px; border:1px solid var(--border); background: #ffffff; border-radius:12px; padding:10px 12px; font-size:13px; color:var(--muted); line-height:1.35;}
+    .footer-link{display:flex; justify-content:flex-start;}
   </style>
 </head>
 <body>
   <div class="card">
-    {% include "_active_plan.html" %}
-    {% if joined_existing %}
-      <h1>Dogovorjeno ✅</h1>
-      <div class="subtitle">Greš v {{ restaurant.name }} · {{ bucket_label }}</div>
-      <div class="subtitle">Pridružil si se: {% if primary_other %}{{ primary_other }}{% endif %}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
-      {% if primary_other %}
-        <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
-        <div class="subtitle" style="margin-top:10px; margin-bottom:4px;">Predlagano sporočilo</div>
-        <div class="preview-box">Hej! Vidim na BoniBuddy, da greš jest v {{ restaurant.name }} {{ bucket_label }}. A greva skupaj? 😊</div>
-        <button class="btn-secondary" id="copyDmBtn" type="button">📋 Kopiraj DM</button>
-        <div class="muted" style="font-size:12px; margin-top:4px;">Prilepi v Instagram DM.</div>
-      {% endif %}
-    {% else %}
-      <h1>Plan objavljen 👀</h1>
-      <div class="subtitle">Greš v {{ restaurant.name }} · {{ bucket_label }}</div>
-      <div class="subtitle">Zaenkrat si prvi — povabi prijatelja ali počakaj.</div>
-      <button class="btn" id="shareBtn" type="button">Deli link</button>
-      <button class="btn btn-secondary" id="copyInviteBtn" type="button">📋 Kopiraj vabilo</button>
-    {% endif %}
+    <div class="logo-placeholder" aria-hidden="true">
+      <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <g clip-path="url(#clip0_187_175)">
+          <rect width="512" height="512" fill="#F5F5F5"/>
+          <path d="M408 126C516.248 126 604 230.542 604 359.5C604 488.458 516.248 593 408 593H104C-4.24781 593 -92 488.458 -92 359.5C-92 230.542 -4.24781 126 104 126C165.318 126 220.06 159.545 256 212.071C291.94 159.545 346.682 126 408 126Z" fill="url(#paint0_radial_187_175)"/>
+          <mask id="mask0_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="113" y="261" width="101" height="81">
+            <path d="M163.812 261.566C191.434 261.566 213.826 283.959 213.826 311.581C213.826 322.912 210.056 333.361 203.705 341.747C191.756 336.784 177.561 333.907 162.333 333.907C148.064 333.907 134.701 336.432 123.243 340.834C117.301 332.608 113.797 322.504 113.797 311.581C113.797 283.959 136.189 261.567 163.812 261.566Z" fill="white"/>
+          </mask>
+          <g mask="url(#mask0_187_175)">
+            <circle cx="163.796" cy="311.581" r="50.0147" fill="white"/>
+            <path d="M130.503 292.783C135.206 284.638 142.766 278.53 151.716 275.643C160.667 272.756 170.371 273.297 178.946 277.16C187.521 281.023 194.356 287.933 198.125 296.549C201.894 305.166 202.328 314.876 199.343 323.794C196.359 332.713 190.168 340.206 181.972 344.819C173.777 349.432 164.16 350.836 154.987 348.76C145.814 346.684 137.739 341.275 132.328 333.583C126.917 325.89 124.556 316.462 125.703 307.128L163.362 311.754L130.503 292.783Z" fill="#131313"/>
+          </g>
+          <mask id="mask1_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="296" y="261" width="101" height="81">
+            <path d="M346.827 261.566C374.45 261.566 396.842 283.959 396.842 311.581C396.842 322.912 393.072 333.361 386.721 341.747C374.772 336.784 360.577 333.907 345.349 333.907C331.079 333.907 317.716 336.432 306.259 340.834C300.317 332.608 296.813 322.504 296.812 311.581C296.812 283.959 319.205 261.566 346.827 261.566Z" fill="white"/>
+          </mask>
+          <g mask="url(#mask1_187_175)">
+            <circle cx="346.812" cy="311.581" r="50.0147" fill="white"/>
+            <path d="M313.519 292.783C318.221 284.638 325.781 278.53 334.732 275.643C343.683 272.756 353.387 273.297 361.962 277.16C370.537 281.023 377.372 287.933 381.14 296.549C384.909 305.166 385.343 314.876 382.359 323.794C379.374 332.713 373.184 340.206 364.988 344.819C356.792 349.432 347.175 350.836 338.002 348.76C328.829 346.684 320.755 341.275 315.344 333.583C309.933 325.89 307.572 316.462 308.719 307.128L346.378 311.754L313.519 292.783Z" fill="#131313"/>
+          </g>
+          <path d="M185.508 378.436C185.508 378.436 228.062 399.355 256.928 398.834C285.794 398.313 324.638 378.436 324.638 378.436" stroke="#25130D" stroke-width="11.1304" stroke-linecap="round"/>
+        </g>
+        <defs>
+          <radialGradient id="paint0_radial_187_175" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 359.5) rotate(90) scale(233.5 348)">
+            <stop stop-color="#00A6F6"/>
+            <stop offset="1" stop-color="#92DBF3"/>
+          </radialGradient>
+          <clipPath id="clip0_187_175">
+            <rect width="512" height="512" fill="white"/>
+          </clipPath>
+        </defs>
+      </svg>
+    </div>
+    <h1>Dogovorjeno ✅</h1>
 
-    <form method="post" action="/waiting/leave" style="margin-top:14px;">
-      <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-      <input type="hidden" name="time_bucket" value="{{ bucket }}">
-      <input type="hidden" name="user_id" value="{{ user_id }}">
-      <button class="btn btn-secondary" type="submit">Prekliči plan</button>
-    </form>
-    <a class="link" href="/">Nazaj na pregled</a>
+    <div class="cta-stack">
+      <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+      <form method="post" action="/waiting/leave" style="margin:0;">
+        <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+        <input type="hidden" name="time_bucket" value="{{ bucket }}">
+        <input type="hidden" name="user_id" value="{{ user_id }}">
+        <button class="btn-secondary" type="submit">Prekliči plan</button>
+      </form>
+    </div>
+    <div class="footer-link">
+      <a class="link" href="/">Nazaj na pregled</a>
+    </div>
   </div>
-  <script>
-    (function(){
-      async function copyText(txt){
-        try{
-          await navigator.clipboard.writeText(txt);
-          return true;
-        }catch(e){ return false; }
-      }
-      const dmBtn = document.getElementById('copyDmBtn');
-      if(dmBtn){
-        dmBtn.addEventListener('click', async ()=>{
-          const ok = await copyText("{{ copy_message_for_dm }}");
-          dmBtn.textContent = ok ? "✅ Kopirano" : "Ni uspelo kopirati";
-          setTimeout(()=>dmBtn.textContent="📋 Kopiraj DM",1500);
-        });
-      }
-      const inviteBtn = document.getElementById('copyInviteBtn');
-      if(inviteBtn){
-        inviteBtn.addEventListener('click', async ()=>{
-          const ok = await copyText("{{ copy_invite_message }}");
-          inviteBtn.textContent = ok ? "Skopirano ✓" : "Ni šlo, kopiraj ročno";
-          setTimeout(()=>inviteBtn.textContent="Kopiraj vabilo",1500);
-        });
-      }
-      const shareBtn = document.getElementById('shareBtn');
-      if(shareBtn){
-        shareBtn.addEventListener('click', async ()=>{
-          const url = "{{ share_url }}";
-          const text = "{{ copy_invite_message }}";
-          try{
-            if(navigator.share){
-              await navigator.share({title:"BoniBuddy", text, url});
-            }else{
-              await copyText(text);
-              shareBtn.textContent = "Link skopiran ✓";
-              setTimeout(()=>shareBtn.textContent="Deli link",1500);
-            }
-          }catch(e){
-            shareBtn.textContent = "Poskusi znova";
-            setTimeout(()=>shareBtn.textContent="Deli link",1500);
-          }
-        });
-      }
-    })();
-  </script>
 </body>
 </html>
