@@ -168,17 +168,9 @@
     .slot-card{border:1px solid var(--border); background: rgba(255,255,255,0.06); border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease;}
     .slot-card.selected{border:2px solid var(--accent); background: rgba(106,166,255,0.16);}
     .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
-    .time-caption{font-size:12px; color: var(--muted); margin-top:4px;}
+  .time-caption{font-size:12px; color: var(--muted); margin-top:4px;}
   </style>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8J74Q3FVB6"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-8J74Q3FVB6');
-</script>
+  {% include "_ga.html" %}
 </head>
 <body>
   <div class="card">
@@ -529,26 +521,9 @@
 
     poll();
 
-    // GA: fire slot_filled once per join submit
-    (function() {
-      const form = document.getElementById('joinForm');
-      let sent = false;
-      if (!form) return;
-      form.addEventListener('submit', () => {
-        if (sent || typeof window.gtag !== 'function') return;
-        sent = true;
-        const restaurantId = form.querySelector('input[name="restaurant_id"]')?.value || undefined;
-        const timeBucket = form.querySelector('input[name="time_bucket"]')?.value || undefined;
-        gtag('event', 'slot_filled', {
-          restaurant_id: restaurantId,
-          time_bucket: timeBucket,
-        });
-      }, { once: false });
-    })();
-
-    // GA: ensure open_instagram fires for polling-based match UI
-    (function() {
-      const restaurantId = '{{ restaurant_id }}';
+        // GA: ensure open_instagram fires for polling-based match UI
+        (function() {
+          const restaurantId = '{{ restaurant_id }}';
       const originalStatus = document.getElementById('status');
       const origPoll = poll;
 
