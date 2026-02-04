@@ -347,7 +347,7 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
     restaurant = engine.get_restaurant(restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
-    board = engine.get_waiting_board(restaurant_id)
+    board = engine.get_waiting_board(restaurant_id) or {}
     city_label = (getattr(restaurant, "city", "") or "").title()
     loc_label = restaurant.address or city_label or restaurant.location_id or restaurant.id
     user_bucket = engine.get_user_bucket(restaurant_id, user_id) if user_id else None
