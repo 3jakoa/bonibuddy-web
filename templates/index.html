@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>BoniBuddy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1220">
+  <meta name="theme-color" content="#F6FBFE">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,16 +12,18 @@
 
   <style>
     :root{
-      --bg: #0b1220;
-      --card: rgba(255,255,255,0.08);
-      --card2: rgba(255,255,255,0.06);
-      --text: rgba(255,255,255,0.95);
-      --muted: rgba(255,255,255,0.65);
-      --border: rgba(255,255,255,0.14);
-      --accent: #6aa6ff;
-      --danger: #ff5a6a;
+      --bg: #F6FBFE;
+      --card: #ffffff;
+      --card2: #ffffff;
+      --text: #111111;
+      --muted: #5F6F7A;
+      --disabled: #9ca3af;
+      --border: rgba(0,166,246,0.18);
+      --accent: #00A6F6;
+      --accent-light: #92DBF3;
+      --danger: #ef4444;
       --radius: 18px;
-      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+      --shadow: 0 12px 32px rgba(0,166,246,0.10);
     }
 
     * { box-sizing: border-box; }
@@ -30,10 +32,7 @@
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: var(--text);
-      background:
-        radial-gradient(900px 600px at 20% 0%, rgba(106,166,255,0.22), transparent 60%),
-        radial-gradient(900px 600px at 90% 10%, rgba(65,209,139,0.18), transparent 60%),
-        var(--bg);
+      background: var(--bg);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -44,7 +43,7 @@
     .card{
       width: 100%;
       max-width: 420px;
-      background: linear-gradient(180deg, var(--card), var(--card2));
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -57,7 +56,28 @@
       margin: 0 0 6px;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      text-align: center;
+    }
+
+    .logo-placeholder{
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      background: #EAF7FD;
+      overflow: hidden;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .logo-placeholder svg{ 
+      width: 100%;
+      height: 100%;
+      display: block;
     }
 
     .subtitle{
@@ -99,7 +119,7 @@
       padding: 12px 12px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.08);
+      background: #ffffff;
       color: var(--text);
       outline: none;
       font-size: 15px;
@@ -107,13 +127,15 @@
 
     select:focus, input:focus{
       border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%);
+      box-shadow: 0 0 0 3px rgba(0,166,246,0.18);
     }
 
     /* Ensure native dropdown options stay readable on desktop browsers */
     @media (pointer: fine) {
       select option{
-        color: #0b0f16;
-        background: #fff;
+        color: #111111;
+        background: #ffffff;
       }
     }
 
@@ -134,20 +156,21 @@
       width: 100%;
       padding: 14px 16px;
       border-radius: 14px;
-      border: none;
+      border: 1px solid var(--accent);
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      background: linear-gradient(135deg, #6aa6ff, #7dd3a8);
-      color: #081018;
+      background: var(--accent);
+      color: #ffffff;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     .btn:active{ transform: scale(0.98); }
 
     .error{
-      background: rgba(255,90,106,0.12);
-      border: 1px solid rgba(255,90,106,0.35);
-      color: #ffd6db;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.35);
+      color: #991b1b;
       padding: 10px 12px;
       border-radius: 12px;
       font-size: 13px;
@@ -182,28 +205,33 @@
     .chip-row{display:flex; gap:10px; align-items:flex-start; margin:0 0 12px; flex-wrap:wrap;}
     .chip-row--area{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling: touch; padding-bottom:4px;}
     .search-bar{display:flex; gap:10px; align-items:center; margin:6px 0 12px;}
-    .search-bar input{flex:1; padding:12px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color:var(--text); font-size:15px;}
-    .search-bar input:focus{border-color: var(--accent);}
-    .search-clear{padding:11px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,0.08); color: var(--muted); cursor:pointer; font-weight:700;}
-    .search-clear:hover{border-color: var(--accent); color: var(--text);}
-    .chip{height:44px; padding:0 16px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color:var(--text); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap;}
-    .chip--active{border-color: rgba(106,166,255,0.8); background: rgba(106,166,255,0.16); color:var(--text);}
-    .chip-stack{display:flex; flex-direction:column; align-items:center; gap:6px;}
-    .time-caption{font-size:12px; color: var(--muted);}
+    .search-bar input{flex:1; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color:var(--text); font-size:15px; box-shadow: 0 0 0 0 rgba(0,166,246,0.10);}
+    .search-bar input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
+    .search-clear{padding:11px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background: #EAF7FD; color: #007FBF; cursor:pointer; font-weight:700;}
+    .search-clear:hover{background: #d7f0fc; border-color: #92DBF3;}
+    .chip{height:44px; padding:0 16px; border-radius:14px; border:1.5px solid #92DBF3; background: transparent; color:#007FBF; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap; box-shadow: none;}
+    .chip--active{border: none; background: var(--accent); color:#ffffff; box-shadow: none;}
+    .chip-row--time .chip{height:auto; padding:10px 16px; flex-direction:column; gap:3px; white-space:normal; line-height:1.1; text-align:center;}
+    .chip__primary{font-size:15px; font-weight:700;}
+    .chip__secondary{font-size:12px; font-weight:400; color:#5F7A94;}
+    .chip--active .chip__secondary{color:#DFF2FF;}
+    .chip-stack{display:flex; flex-direction:column; align-items:center; gap:8px;}
+    .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:2px;}
     .restaurant-list{max-height:420px; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
     .list{display:flex; flex-direction:column; gap:10px;}
-    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); text-decoration:none;}
-    .rest-row--active{background: rgba(120,200,140,0.08); border-color: rgba(120,200,140,0.35);}
+    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color: var(--text); text-decoration:none; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
+    .rest-row{background: #F6FCFF; border-color: rgba(0,166,246,0.14); box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
+    .rest-row--active{background: #E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);}
     .rest-info{flex:1;}
-    .rest-name{font-size:15px; font-weight:600;}
+    .rest-name{font-size:15px; font-weight:400;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
     .who{font-size:13px; color: var(--muted); margin-top:6px;}
-    .badge{padding:8px 10px; border-radius:12px; background: rgba(255,255,255,0.12); border:1px solid var(--border); font-weight:700; font-size:13px; margin-left:10px;}
-    .badge--active{background: #62c48a; border-color: #62c48a; color: #062014; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(98,196,138,0.25);}
+    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);}
     .muted{color: var(--muted);}
     .suggest-cta{margin-top:14px; text-align:left;}
-    .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: rgba(255,255,255,0.75); text-decoration:none; font-weight:700; font-size:14px;}
-    .suggest-cta__link:hover{color: rgba(255,255,255,0.9); text-decoration: underline;}
+    .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: var(--accent); text-decoration:none; font-weight:700; font-size:14px;}
+    .suggest-cta__link:hover{color: #005f8f; text-decoration: underline;}
     .suggest-cta__hint{font-size:12px; color: var(--muted); margin-top:4px;}
   </style>
   {% include "_ga.html" %}
@@ -212,31 +240,57 @@
   <div class="card">
     {% if feature_waiting_board %}
       {% include "_active_plan.html" %}
-      <h1 style="margin-bottom:6px;">Greš na bone? 🍽️</h1>
-      <div class="subtitle">Izberi čas in lokacijo — in poglej, kdo gre istočasno.</div>
-      {% if total_waiting > 0 %}
-        <div class="subtitle muted">Trenutno gre {{ total_waiting }} študentov 🍽️</div>
-      {% else %}
-        <div class="subtitle muted">Za ta čas še ni nikogar — lahko začneš ti 👀</div>
-      {% endif %}
+      <div class="logo-placeholder" aria-hidden="true">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <g clip-path="url(#clip0_187_175)">
+            <rect width="512" height="512" fill="#F5F5F5"/>
+            <path d="M408 126C516.248 126 604 230.542 604 359.5C604 488.458 516.248 593 408 593H104C-4.24781 593 -92 488.458 -92 359.5C-92 230.542 -4.24781 126 104 126C165.318 126 220.06 159.545 256 212.071C291.94 159.545 346.682 126 408 126Z" fill="url(#paint0_radial_187_175)"/>
+            <mask id="mask0_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="113" y="261" width="101" height="81">
+              <path d="M163.812 261.566C191.434 261.566 213.826 283.959 213.826 311.581C213.826 322.912 210.056 333.361 203.705 341.747C191.756 336.784 177.561 333.907 162.333 333.907C148.064 333.907 134.701 336.432 123.243 340.834C117.301 332.608 113.797 322.504 113.797 311.581C113.797 283.959 136.189 261.567 163.812 261.566Z" fill="white"/>
+            </mask>
+            <g mask="url(#mask0_187_175)">
+              <circle cx="163.796" cy="311.581" r="50.0147" fill="white"/>
+              <path d="M130.503 292.783C135.206 284.638 142.766 278.53 151.716 275.643C160.667 272.756 170.371 273.297 178.946 277.16C187.521 281.023 194.356 287.933 198.125 296.549C201.894 305.166 202.328 314.876 199.343 323.794C196.359 332.713 190.168 340.206 181.972 344.819C173.777 349.432 164.16 350.836 154.987 348.76C145.814 346.684 137.739 341.275 132.328 333.583C126.917 325.89 124.556 316.462 125.703 307.128L163.362 311.754L130.503 292.783Z" fill="#131313"/>
+            </g>
+            <mask id="mask1_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="296" y="261" width="101" height="81">
+              <path d="M346.827 261.566C374.45 261.566 396.842 283.959 396.842 311.581C396.842 322.912 393.072 333.361 386.721 341.747C374.772 336.784 360.577 333.907 345.349 333.907C331.079 333.907 317.716 336.432 306.259 340.834C300.317 332.608 296.813 322.504 296.812 311.581C296.812 283.959 319.205 261.566 346.827 261.566Z" fill="white"/>
+            </mask>
+            <g mask="url(#mask1_187_175)">
+              <circle cx="346.812" cy="311.581" r="50.0147" fill="white"/>
+              <path d="M313.519 292.783C318.221 284.638 325.781 278.53 334.732 275.643C343.683 272.756 353.387 273.297 361.962 277.16C370.537 281.023 377.372 287.933 381.14 296.549C384.909 305.166 385.343 314.876 382.359 323.794C379.374 332.713 373.184 340.206 364.988 344.819C356.792 349.432 347.175 350.836 338.002 348.76C328.829 346.684 320.755 341.275 315.344 333.583C309.933 325.89 307.572 316.462 308.719 307.128L346.378 311.754L313.519 292.783Z" fill="#131313"/>
+            </g>
+            <path d="M185.508 378.436C185.508 378.436 228.062 399.355 256.928 398.834C285.794 398.313 324.638 378.436 324.638 378.436" stroke="#25130D" stroke-width="11.1304" stroke-linecap="round"/>
+          </g>
+          <defs>
+            <radialGradient id="paint0_radial_187_175" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 359.5) rotate(90) scale(233.5 348)">
+              <stop stop-color="#00A6F6"/>
+              <stop offset="1" stop-color="#92DBF3"/>
+            </radialGradient>
+            <clipPath id="clip0_187_175">
+              <rect width="512" height="512" fill="white"/>
+            </clipPath>
+          </defs>
+        </svg>
+      </div>
+      <h1 style="margin-bottom:6px;">Greš na bone?</h1>
 
-      <div class="muted" style="margin-top:14px; margin-bottom:6px;">Kdaj greš?</div>
+      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
       <div class="chip-row chip-row--time">
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">Zdaj</a>
-          <div class="time-caption">{{ time_windows['now'].label }}</div>
-        </div>
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">+30</a>
-          <div class="time-caption">{{ time_windows['30'].label }}</div>
-        </div>
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">+60</a>
-          <div class="time-caption">{{ time_windows['60'].label }}</div>
-        </div>
+        <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">Zdaj</span>
+          <span class="chip__secondary">{{ time_windows['now'].label }}</span>
+        </a>
+        <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">+30</span>
+          <span class="chip__secondary">{{ time_windows['30'].label }}</span>
+        </a>
+        <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">+60</span>
+          <span class="chip__secondary">{{ time_windows['60'].label }}</span>
+        </a>
       </div>
 
-      <div class="muted" style="margin-top:10px; margin-bottom:6px;">Poišči restavracijo</div>
+      <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">Poišči kam greš</div>
       <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
         <input type="hidden" name="t" value="{{ selected_t }}">
         <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
@@ -257,8 +311,6 @@
                   <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
                   {% if is_active %}
                     <div class="who" aria-hidden="true">&nbsp;</div>
-                  {% else %}
-                    <div class="who muted">Za ta čas še ni objav.</div>
                   {% endif %}
                 </div>
                 <div class="badge {% if is_active %}badge--active{% endif %}">
@@ -272,8 +324,39 @@
 
       </div>
     {% else %}
-      <h1 style="margin-bottom:6px;">Greš na bone? 🍽️</h1>
-      <div class="subtitle">Ta stran je posodobljena — prosim osveži ali pojdi na domačo.</div>
+      <div class="logo-placeholder" aria-hidden="true">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <g clip-path="url(#clip0_187_175)">
+            <rect width="512" height="512" fill="#F5F5F5"/>
+            <path d="M408 126C516.248 126 604 230.542 604 359.5C604 488.458 516.248 593 408 593H104C-4.24781 593 -92 488.458 -92 359.5C-92 230.542 -4.24781 126 104 126C165.318 126 220.06 159.545 256 212.071C291.94 159.545 346.682 126 408 126Z" fill="url(#paint0_radial_187_175)"/>
+            <mask id="mask0_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="113" y="261" width="101" height="81">
+              <path d="M163.812 261.566C191.434 261.566 213.826 283.959 213.826 311.581C213.826 322.912 210.056 333.361 203.705 341.747C191.756 336.784 177.561 333.907 162.333 333.907C148.064 333.907 134.701 336.432 123.243 340.834C117.301 332.608 113.797 322.504 113.797 311.581C113.797 283.959 136.189 261.567 163.812 261.566Z" fill="white"/>
+            </mask>
+            <g mask="url(#mask0_187_175)">
+              <circle cx="163.796" cy="311.581" r="50.0147" fill="white"/>
+              <path d="M130.503 292.783C135.206 284.638 142.766 278.53 151.716 275.643C160.667 272.756 170.371 273.297 178.946 277.16C187.521 281.023 194.356 287.933 198.125 296.549C201.894 305.166 202.328 314.876 199.343 323.794C196.359 332.713 190.168 340.206 181.972 344.819C173.777 349.432 164.16 350.836 154.987 348.76C145.814 346.684 137.739 341.275 132.328 333.583C126.917 325.89 124.556 316.462 125.703 307.128L163.362 311.754L130.503 292.783Z" fill="#131313"/>
+            </g>
+            <mask id="mask1_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="296" y="261" width="101" height="81">
+              <path d="M346.827 261.566C374.45 261.566 396.842 283.959 396.842 311.581C396.842 322.912 393.072 333.361 386.721 341.747C374.772 336.784 360.577 333.907 345.349 333.907C331.079 333.907 317.716 336.432 306.259 340.834C300.317 332.608 296.813 322.504 296.812 311.581C296.812 283.959 319.205 261.566 346.827 261.566Z" fill="white"/>
+            </mask>
+            <g mask="url(#mask1_187_175)">
+              <circle cx="346.812" cy="311.581" r="50.0147" fill="white"/>
+              <path d="M313.519 292.783C318.221 284.638 325.781 278.53 334.732 275.643C343.683 272.756 353.387 273.297 361.962 277.16C370.537 281.023 377.372 287.933 381.14 296.549C384.909 305.166 385.343 314.876 382.359 323.794C379.374 332.713 373.184 340.206 364.988 344.819C356.792 349.432 347.175 350.836 338.002 348.76C328.829 346.684 320.755 341.275 315.344 333.583C309.933 325.89 307.572 316.462 308.719 307.128L346.378 311.754L313.519 292.783Z" fill="#131313"/>
+            </g>
+            <path d="M185.508 378.436C185.508 378.436 228.062 399.355 256.928 398.834C285.794 398.313 324.638 378.436 324.638 378.436" stroke="#25130D" stroke-width="11.1304" stroke-linecap="round"/>
+          </g>
+          <defs>
+            <radialGradient id="paint0_radial_187_175" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 359.5) rotate(90) scale(233.5 348)">
+              <stop stop-color="#00A6F6"/>
+              <stop offset="1" stop-color="#92DBF3"/>
+            </radialGradient>
+            <clipPath id="clip0_187_175">
+              <rect width="512" height="512" fill="white"/>
+            </clipPath>
+          </defs>
+        </svg>
+      </div>
+      <h1 style="margin-bottom:6px;">Greš na bone</h1>
       <a class="chip chip--active" href="/">Nazaj na začetek</a>
     {% endif %}
     <div class="foot">
