@@ -167,7 +167,8 @@
     .input-row .ig-icon{position:absolute; left:14px; top:50%; transform: translateY(-50%);}
     .status{font-size:13px; color:var(--muted); margin-top:8px;}
     .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: #ffffff; font-size:12px;}
-    .badge{padding:6px 9px; border-radius:10px; background: var(--accent-light); border:1px solid rgba(0,166,246,0.15); font-weight:700; font-size:13px; color:#006FA6;}
+    .badge{padding:6px 9px; border-radius:10px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; color:#05A5F7;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);}
     .slot-card{border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
     .slot-card.selected{border:2px solid var(--accent); background: #EAF7FD; box-shadow: 0 10px 24px rgba(0,166,246,0.12);}
     .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
@@ -193,8 +194,8 @@
           <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
             <div class="slot-header">
               <span style="font-weight:700;">{{ tb_labels[tb] }}</span>
-              <span class="badge">
-                {% set cnt = slot.count if slot else 0 %}
+              {% set cnt = slot.count if slot else 0 %}
+              <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
                 {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
               </span>
             </div>
@@ -209,8 +210,6 @@
                 {%- endfor -%}
                 {% if extra > 0 %} +{{ extra }}{% endif %}
               </div>
-            {% else %}
-              <div class="muted" style="font-size:13px;">Za ta čas še ni objav.</div>
             {% endif %}
           </div>
         {% endfor %}

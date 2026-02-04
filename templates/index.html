@@ -211,18 +211,23 @@
     .search-clear:hover{background: #d7f0fc; border-color: #92DBF3;}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1.5px solid #92DBF3; background: transparent; color:#007FBF; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap; box-shadow: none;}
     .chip--active{border: none; background: var(--accent); color:#ffffff; box-shadow: none;}
+    .chip-row--time .chip{height:auto; padding:10px 16px; flex-direction:column; gap:3px; white-space:normal; line-height:1.1; text-align:center;}
+    .chip__primary{font-size:15px; font-weight:700;}
+    .chip__secondary{font-size:12px; font-weight:400; color:#5F7A94;}
+    .chip--active .chip__secondary{color:#DFF2FF;}
     .chip-stack{display:flex; flex-direction:column; align-items:center; gap:8px;}
     .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:2px;}
     .restaurant-list{max-height:420px; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
     .list{display:flex; flex-direction:column; gap:10px;}
     .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color: var(--text); text-decoration:none; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
-    .rest-row--active{background: #EAF7FD; border-color: var(--accent); box-shadow: 0 8px 20px rgba(0,166,246,0.12);}
+    .rest-row{background: #F6FCFF; border-color: rgba(0,166,246,0.14); box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
+    .rest-row--active{background: #E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);}
     .rest-info{flex:1;}
     .rest-name{font-size:15px; font-weight:400;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
     .who{font-size:13px; color: var(--muted); margin-top:6px;}
-    .badge{padding:8px 10px; border-radius:12px; background: var(--accent-light); border:1px solid rgba(0,166,246,0.15); font-weight:700; font-size:13px; margin-left:10px; color:#006FA6;}
-    .badge--active{background: var(--accent); border-color: var(--accent); color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);}
+    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);}
     .muted{color: var(--muted);}
     .suggest-cta{margin-top:14px; text-align:left;}
     .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: var(--accent); text-decoration:none; font-weight:700; font-size:14px;}
@@ -271,18 +276,18 @@
 
       <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
       <div class="chip-row chip-row--time">
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">Zdaj</a>
-          <div class="time-caption">{{ time_windows['now'].label }}</div>
-        </div>
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">+30</a>
-          <div class="time-caption">{{ time_windows['30'].label }}</div>
-        </div>
-        <div class="chip-stack">
-          <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">+60</a>
-          <div class="time-caption">{{ time_windows['60'].label }}</div>
-        </div>
+        <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">Zdaj</span>
+          <span class="chip__secondary">{{ time_windows['now'].label }}</span>
+        </a>
+        <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">+30</span>
+          <span class="chip__secondary">{{ time_windows['30'].label }}</span>
+        </a>
+        <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">
+          <span class="chip__primary">+60</span>
+          <span class="chip__secondary">{{ time_windows['60'].label }}</span>
+        </a>
       </div>
 
       <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">Poišči kam greš</div>
@@ -306,8 +311,6 @@
                   <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
                   {% if is_active %}
                     <div class="who" aria-hidden="true">&nbsp;</div>
-                  {% else %}
-                    <div class="who muted">Za ta čas še ni objav.</div>
                   {% endif %}
                 </div>
                 <div class="badge {% if is_active %}badge--active{% endif %}">

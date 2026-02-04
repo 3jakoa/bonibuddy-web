@@ -56,7 +56,8 @@
     .rest-row a{color:inherit; text-decoration:none; flex:1;}
     .rest-name{font-size:15px; font-weight:600;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
-    .badge{padding:8px 10px; border-radius:12px; background: var(--accent-light); border:1px solid rgba(0,166,246,0.15); font-weight:700; font-size:13px; margin-right:10px; color:#006FA6;}
+    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-right:10px; color:#05A5F7;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);}
     .join-btn{padding:10px 14px; border-radius:12px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; margin-left:10px; white-space:nowrap;}
     .join-btn:hover{background: #008ed5;}
     .btn{padding:12px 14px; border-radius:12px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; display:inline-block;}
@@ -90,7 +91,10 @@
               <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
             </a>
             <div style="display:flex; align-items:center;">
-              <div class="badge">{% if item.total_waiting == 1 %}1 gre{% elif item.total_waiting == 0 %}0 gre{% else %}{{ item.total_waiting }} gredo{% endif %}</div>
+              {% set cnt = item.total_waiting %}
+              <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
+                {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+              </div>
               <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">Join</a>
             </div>
           </div>
