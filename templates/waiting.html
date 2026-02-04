@@ -23,16 +23,26 @@
 
     * { box-sizing: border-box; }
 
+    html, body{
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: var(--text);
       background: var(--bg);
-      min-height: 100vh;
+    }
+
+    .page{
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
     }
 
     .card{
@@ -42,8 +52,20 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 22px 20px 24px;
+      padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
       backdrop-filter: blur(10px);
+      max-height: calc(100dvh - 48px - env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .card-body{
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
     }
 
     h1{
@@ -169,7 +191,16 @@
     .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: #ffffff; font-size:12px;}
     .badge{padding:6px 9px; border-radius:10px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; color:#05A5F7;}
     .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);} 
-    .slot-list{display:flex; flex-direction:column; gap:12px; margin:24px 0 24px;}
+    .slot-list{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin:24px 0 24px;
+      flex-shrink: 1;
+      min-height:0;
+      overflow-y:auto;
+      -webkit-overflow-scrolling: touch;
+    }
     .slot-card{border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease; box-shadow: none;} 
     .slot-card.selected{border:2px solid var(--accent); background: #EAF7FD; box-shadow: none;} 
     .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:12px;}
@@ -180,139 +211,143 @@
   {% include "_ga.html" %}
 </head>
 <body>
-  <div class="card">
-    {% if feature_waiting_board %}
-      {% include "_active_plan.html" %}
-      <h1>📍 {{ restaurant.name }}</h1>
-      {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
-      {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
+  <div class="page">
+    <div class="card">
+      <div class="card-body">
+        {% if feature_waiting_board %}
+          {% include "_active_plan.html" %}
+          <h1>📍 {{ restaurant.name }}</h1>
+          {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
+          {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
 
-      <form method="post" action="/waiting/join" id="joinForm">
-        <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
-        <input type="hidden" id="timeBucketInput" name="time_bucket" value="{{ selected_bucket }}">
+          <form method="post" action="/waiting/join" id="joinForm" style="display:flex; flex-direction:column; gap:0; min-height:0;">
+            <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
+            <input type="hidden" id="timeBucketInput" name="time_bucket" value="{{ selected_bucket }}">
 
-        <div class="slot-list">
-          {% for tb in ['now','30','60'] %}
-            {% set slot = board.get(tb) %}
-            <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
-              <div class="slot-header">
-                <div class="slot-left">
-                  <span class="slot-label">{{ tb_labels[tb] }}</span>
-                  <span class="time-caption">{{ time_windows[tb].label }}</span>
+            <div class="slot-list">
+              {% for tb in ['now','30','60'] %}
+                {% set slot = board.get(tb) %}
+                <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
+                  <div class="slot-header">
+                    <div class="slot-left">
+                      <span class="slot-label">{{ tb_labels[tb] }}</span>
+                      <span class="time-caption">{{ time_windows[tb].label }}</span>
+                    </div>
+                    {% set cnt = slot.count if slot else 0 %}
+                    <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
+                      {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+                    </span>
+                  </div>
+                  {% if slot and slot.members %}
+                    <div style="font-size:13px; color: var(--muted);">
+                      {%- set handles = slot.members -%}
+                      {%- set show_handles = handles[:2] -%}
+                      {%- set extra = handles|length - show_handles|length -%}
+                      {%- for m in show_handles -%}
+                        @{{ m }}{% if not loop.last %}, {% endif %}
+                      {%- endfor -%}
+                      {% if extra > 0 %} +{{ extra }}{% endif %}
+                    </div>
+                  {% endif %}
                 </div>
-                {% set cnt = slot.count if slot else 0 %}
-                <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
-                  {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
-                </span>
-              </div>
-              {% if slot and slot.members %}
-                <div style="font-size:13px; color: var(--muted);">
-                  {%- set handles = slot.members -%}
-                  {%- set show_handles = handles[:2] -%}
-                  {%- set extra = handles|length - show_handles|length -%}
-                  {%- for m in show_handles -%}
-                    @{{ m }}{% if not loop.last %}, {% endif %}
-                  {%- endfor -%}
-                  {% if extra > 0 %} +{{ extra }}{% endif %}
-                </div>
-              {% endif %}
+              {% endfor %}
             </div>
-          {% endfor %}
-        </div>
 
-        <div class="input-row">
-          <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
-          </svg>
-          <input id="userIdInput" name="user_id" type="text" placeholder="tvoj Instagram" value="{{ user_id }}" required>
-        </div>
-        <div class="cta-row">
-          <button type="submit">Potrdi</button>
-        </div>
-      </form>
+            <div class="input-row">
+              <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+              </svg>
+              <input id="userIdInput" name="user_id" type="text" placeholder="tvoj Instagram" value="{{ user_id }}" required>
+            </div>
+            <div class="cta-row">
+              <button type="submit">Potrdi</button>
+            </div>
+          </form>
 
-      {% if user_bucket %}
-        <div class="status">
-          <span class="pill">Ti si prijavljen za: {{ tb_labels[user_bucket] }}</span>
-        </div>
-        <form method="post" action="/waiting/leave" style="margin-top:10px;">
-          <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
-          <input type="hidden" name="time_bucket" value="{{ user_bucket }}">
-          <input type="hidden" name="user_id" value="{{ user_id }}">
-          <button class="btn" type="submit" style="width:100%; background:#ffffff; color: var(--accent); border:1px solid var(--accent);">Prekliči</button>
-        </form>
-      {% endif %}
-      <a class="link" href="/" style="display:inline-block; margin-top:16px;">Nazaj na lokacije</a>
-      <script>
-        (function() {
-          const focus = {{ 'true' if join_focus else 'false' }};
-          if (focus) {
-            const el = document.getElementById('userIdInput');
-            if (el) { setTimeout(() => el.focus(), 50); }
-          }
-          const slots = document.querySelectorAll('.slot-card');
-          const hidden = document.getElementById('timeBucketInput');
-          let selected = '{{ selected_bucket }}';
-          function updateSelection(bucket) {
-            selected = bucket;
-            if (hidden) hidden.value = bucket;
-            slots.forEach(el => {
-              if (el.dataset.bucket === bucket) {
-                el.classList.add('selected');
-              } else {
-                el.classList.remove('selected');
+          {% if user_bucket %}
+            <div class="status">
+              <span class="pill">Ti si prijavljen za: {{ tb_labels[user_bucket] }}</span>
+            </div>
+            <form method="post" action="/waiting/leave" style="margin-top:10px;">
+              <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
+              <input type="hidden" name="time_bucket" value="{{ user_bucket }}">
+              <input type="hidden" name="user_id" value="{{ user_id }}">
+              <button class="btn" type="submit" style="width:100%; background:#ffffff; color: var(--accent); border:1px solid var(--accent);">Prekliči</button>
+            </form>
+          {% endif %}
+          <a class="link" href="/" style="display:inline-block; margin-top:16px;">Nazaj na lokacije</a>
+          <script>
+            (function() {
+              const focus = {{ 'true' if join_focus else 'false' }};
+              if (focus) {
+                const el = document.getElementById('userIdInput');
+                if (el) { setTimeout(() => el.focus(), 50); }
               }
-            });
-          }
-          slots.forEach(el => {
-            el.addEventListener('click', () => {
-              updateSelection(el.dataset.bucket);
-            });
-          });
-          updateSelection(selected);
-        })();
+              const slots = document.querySelectorAll('.slot-card');
+              const hidden = document.getElementById('timeBucketInput');
+              let selected = '{{ selected_bucket }}';
+              function updateSelection(bucket) {
+                selected = bucket;
+                if (hidden) hidden.value = bucket;
+                slots.forEach(el => {
+                  if (el.dataset.bucket === bucket) {
+                    el.classList.add('selected');
+                  } else {
+                    el.classList.remove('selected');
+                  }
+                });
+              }
+              slots.forEach(el => {
+                el.addEventListener('click', () => {
+                  updateSelection(el.dataset.bucket);
+                });
+              });
+              updateSelection(selected);
+            })();
 
-        // GA: slot_filled — fire once when join form is submitted
-        (function() {
-          const form = document.getElementById('joinForm');
-          if (!form) return;
-          let sent = false;
-          form.addEventListener('submit', () => {
-            if (sent || typeof window.gtag !== 'function') return;
-            sent = true;
-            const restaurantId = form.querySelector('input[name=\"restaurant_id\"]')?.value || undefined;
-            const timeBucket = form.querySelector('input[name=\"time_bucket\"]')?.value || undefined;
-            gtag('event', 'slot_filled', {
-              restaurant_id: restaurantId,
-              time_bucket: timeBucket,
-            });
-          });
-        })();
-      </script>
-    {% else %}
-      <h1 id="heading">Čakamo še na koga 👀</h1>
-      <div class="subtitle">
-        <span class="spinner" aria-hidden="true"></span>
-        Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
+            // GA: slot_filled — fire once when join form is submitted
+            (function() {
+              const form = document.getElementById('joinForm');
+              if (!form) return;
+              let sent = false;
+              form.addEventListener('submit', () => {
+                if (sent || typeof window.gtag !== 'function') return;
+                sent = true;
+                const restaurantId = form.querySelector('input[name=\"restaurant_id\"]')?.value || undefined;
+                const timeBucket = form.querySelector('input[name=\"time_bucket\"]')?.value || undefined;
+                gtag('event', 'slot_filled', {
+                  restaurant_id: restaurantId,
+                  time_bucket: timeBucket,
+                });
+              });
+            })();
+          </script>
+        {% else %}
+          <h1 id="heading">Čakamo še na koga 👀</h1>
+          <div class="subtitle">
+            <span class="spinner" aria-hidden="true"></span>
+            Osvežujem vsakih nekaj sekund. Če je kdo online ob podobnem času, te povežem.
+          </div>
+
+          <div class="chips">
+            <div class="chip">📍 <b>{{ location }}</b></div>
+            <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
+          </div>
+
+
+          <div id="status" class="muted">Še ni matcha…</div>
+
+          <div class="row" id="notifRow" style="display:none;">
+            <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
+            <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
+          </div>
+
+          <div class="row">
+            <a class="link" href="/">Nazaj</a>
+          </div>
+        {% endif %}
       </div>
-
-      <div class="chips">
-        <div class="chip">📍 <b>{{ location }}</b></div>
-        <div class="chip">🕒 <b>{% if time_bucket == "today" %}Za večerjo 🍕{% else %}Za kosilo 🍝{% endif %}</b></div>
-      </div>
-
-
-      <div id="status" class="muted">Še ni matcha…</div>
-
-      <div class="row" id="notifRow" style="display:none;">
-        <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
-        <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
-      </div>
-
-      <div class="row">
-        <a class="link" href="/">Nazaj</a>
-      </div>
-    {% endif %}
+    </div>
   </div>
 
 {% if not feature_waiting_board %}
