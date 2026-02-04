@@ -168,11 +168,14 @@
     .status{font-size:13px; color:var(--muted); margin-top:8px;}
     .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: #ffffff; font-size:12px;}
     .badge{padding:6px 9px; border-radius:10px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; color:#05A5F7;}
-    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);}
-    .slot-card{border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
-    .slot-card.selected{border:2px solid var(--accent); background: #EAF7FD; box-shadow: 0 10px 24px rgba(0,166,246,0.12);}
-    .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
-  .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:6px;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);} 
+    .slot-list{display:flex; flex-direction:column; gap:12px; margin:24px 0 24px;}
+    .slot-card{border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease; box-shadow: none;} 
+    .slot-card.selected{border:2px solid var(--accent); background: #EAF7FD; box-shadow: none;} 
+    .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:12px;}
+    .slot-left{display:flex; flex-direction:column; gap:4px; align-items:flex-start;}
+    .slot-label{font-weight:700;}
+  .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin:0;}
   </style>
   {% include "_ga.html" %}
 </head>
@@ -181,7 +184,6 @@
     {% if feature_waiting_board %}
       {% include "_active_plan.html" %}
       <h1>📍 {{ restaurant.name }}</h1>
-      <div class="subtitle">{{ location_label }} • Izberi, kdaj greš jest — in potrdi.</div>
       {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
       {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
 
@@ -189,30 +191,34 @@
         <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
         <input type="hidden" id="timeBucketInput" name="time_bucket" value="{{ selected_bucket }}">
 
-        {% for tb in ['now','30','60'] %}
-          {% set slot = board.get(tb) %}
-          <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
-            <div class="slot-header">
-              <span style="font-weight:700;">{{ tb_labels[tb] }}</span>
-              {% set cnt = slot.count if slot else 0 %}
-              <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
-                {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
-              </span>
-            </div>
-            <div class="time-caption">{{ time_windows[tb].label }}</div>
-            {% if slot and slot.members %}
-              <div style="font-size:13px; color: var(--muted);">
-                {%- set handles = slot.members -%}
-                {%- set show_handles = handles[:2] -%}
-                {%- set extra = handles|length - show_handles|length -%}
-                {%- for m in show_handles -%}
-                  @{{ m }}{% if not loop.last %}, {% endif %}
-                {%- endfor -%}
-                {% if extra > 0 %} +{{ extra }}{% endif %}
+        <div class="slot-list">
+          {% for tb in ['now','30','60'] %}
+            {% set slot = board.get(tb) %}
+            <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
+              <div class="slot-header">
+                <div class="slot-left">
+                  <span class="slot-label">{{ tb_labels[tb] }}</span>
+                  <span class="time-caption">{{ time_windows[tb].label }}</span>
+                </div>
+                {% set cnt = slot.count if slot else 0 %}
+                <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
+                  {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+                </span>
               </div>
-            {% endif %}
-          </div>
-        {% endfor %}
+              {% if slot and slot.members %}
+                <div style="font-size:13px; color: var(--muted);">
+                  {%- set handles = slot.members -%}
+                  {%- set show_handles = handles[:2] -%}
+                  {%- set extra = handles|length - show_handles|length -%}
+                  {%- for m in show_handles -%}
+                    @{{ m }}{% if not loop.last %}, {% endif %}
+                  {%- endfor -%}
+                  {% if extra > 0 %} +{{ extra }}{% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
 
         <div class="input-row">
           <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
