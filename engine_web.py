@@ -389,10 +389,17 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
 
         slot = _get_or_create_slot(restaurant_id, time_bucket)
         members = slot_members.setdefault(slot.id, [])
+        before_count = len(members)
 
         for m in members:
             if _normalize_instagram(m.user_id) == user_norm:
-                return {"ok": True, "slot_id": slot.id, "already": True, "moved": bool(existing)}
+                return {
+                    "ok": True,
+                    "slot_id": slot.id,
+                    "already": True,
+                    "moved": bool(existing),
+                    "previous_count": before_count,
+                }
 
         members.append(
             SlotMember(
@@ -409,7 +416,7 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
         user_norm,
         existing[0].time_bucket if existing else None,
     )
-    return {"ok": True, "slot_id": slot.id, "moved": bool(existing)}
+    return {"ok": True, "slot_id": slot.id, "moved": bool(existing), "previous_count": before_count}
 
 
 def leave_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:

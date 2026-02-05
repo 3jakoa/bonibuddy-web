@@ -2,7 +2,7 @@
 <html lang="sl">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • Zaključeno</title>
+  <title>BoniBuddy • {{ 'Zaključeno' if joined_existing else 'Plan objavljen' }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -80,6 +80,7 @@
     .link:hover{text-decoration:underline; color:#005f8f;}
     .footer-link{display:flex; justify-content:flex-start;}
     .card-body{display:flex; flex-direction:column; gap:12px; align-items:center; min-height:0;}
+    .body-text{font-size:14px; color: var(--muted); text-align:center; line-height:1.5; margin:0 4px 6px;}
   </style>
 </head>
 <body>
@@ -118,22 +119,78 @@
             </defs>
           </svg>
         </div>
-        <h1>Dogovorjeno ✅</h1>
+        {% if joined_existing %}
+          <h1>Dogovorjeno ✅</h1>
 
-        <div class="cta-stack">
-          <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
-          <form method="post" action="/waiting/leave" style="margin:0;">
-            <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-            <input type="hidden" name="time_bucket" value="{{ bucket }}">
-            <input type="hidden" name="user_id" value="{{ user_id }}">
-            <button class="btn-secondary" type="submit">Prekliči plan</button>
-          </form>
-        </div>
-        <div class="footer-link">
-          <a class="link" href="/">Nazaj na pregled</a>
-        </div>
+          <div class="cta-stack">
+            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+            <form method="post" action="/waiting/leave" style="margin:0;">
+              <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+              <input type="hidden" name="time_bucket" value="{{ bucket }}">
+              <input type="hidden" name="user_id" value="{{ user_id }}">
+              <button class="btn-secondary" type="submit">Prekliči plan</button>
+            </form>
+          </div>
+          <div class="footer-link">
+            <a class="link" href="/">Nazaj na pregled</a>
+          </div>
+        {% else %}
+          <h1>Plan objavljen 🎉</h1>
+          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo.</div>
+
+          <div class="cta-stack">
+            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
+            <form method="post" action="/waiting/leave" style="margin:0;">
+              <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+              <input type="hidden" name="time_bucket" value="{{ bucket }}">
+              <input type="hidden" name="user_id" value="{{ user_id }}">
+              <button class="btn-secondary" type="submit">Prekliči plan</button>
+            </form>
+          </div>
+          <div class="footer-link">
+            <a class="link" href="/">Nazaj na pregled</a>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
+  <script>
+    (function(){
+      const btn = document.getElementById('shareInviteBtn');
+      if(!btn) return;
+      const original = btn.textContent;
+      const inviteText = btn.dataset.msg || '';
+      const inviteUrl = btn.dataset.url || window.location.href;
+      const fullUrl = inviteUrl.startsWith('http') ? inviteUrl : `${window.location.origin}${inviteUrl}`;
+
+      async function shareNative(){
+        if(!navigator.share) throw new Error('no_share');
+        await navigator.share({
+          title: 'Pridruži se na BoniBuddy',
+          text: inviteText,
+          url: fullUrl
+        });
+      }
+
+      async function copyFallback(){
+        await navigator.clipboard.writeText(`${inviteText}\n${fullUrl}`.trim());
+      }
+
+      btn.addEventListener('click', async () => {
+        try{
+          await shareNative();
+          btn.textContent = 'Poslano ✅';
+        }catch(err){
+          try{
+            await copyFallback();
+            btn.textContent = 'Povezava kopirana';
+          }catch(_err){
+            btn.textContent = 'Deljenje ni uspelo';
+          }
+        }
+        setTimeout(() => { btn.textContent = original; }, 2200);
+      });
+    })();
+  </script>
 </body>
 </html>
