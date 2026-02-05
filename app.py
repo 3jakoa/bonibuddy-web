@@ -394,7 +394,11 @@ def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | N
     members = engine.get_waiting_members(restaurant_id, bucket)
     normalized_user = engine._normalize_instagram(user) if hasattr(engine, "_normalize_instagram") else user.lower()
     others = [m for m in members if (m or "").lower().lstrip("@") != normalized_user]
-    joined_existing = len(members) >= 2
+    created_param = request.query_params.get("created")
+    if created_param is not None:
+        joined_existing = created_param == "0"
+    else:
+        joined_existing = len(others) >= 1
     primary_other = others[0] if others else ""
     bucket_label = {"now": "zdaj", "30": "čez 30 min", "60": "čez 60 min"}.get(bucket, bucket)
     instagram_url = f"https://instagram.com/{quote(primary_other)}" if primary_other else ""
@@ -437,7 +441,9 @@ def waiting_join(
     res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, time_bucket=time_bucket)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "join_failed"))
-    back = f"/done/{restaurant_id}?t={quote(time_bucket)}&u={quote(user_id)}"
+    prev_count = int(res.get("previous_count", 1))
+    created_new = prev_count == 0
+    back = f"/done/{restaurant_id}?t={quote(time_bucket)}&u={quote(user_id)}&created={'1' if created_new else '0'}"
     return RedirectResponse(url=back, status_code=303)
 
 
