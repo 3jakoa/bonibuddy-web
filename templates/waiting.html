@@ -234,13 +234,13 @@
                       <span class="slot-label">{{ tb_labels[tb] }}</span>
                       <span class="time-caption">{{ time_windows[tb].label }}</span>
                     </div>
-                    {% set cnt = slot.count if slot else 0 %}
-                    <span class="badge {% if cnt > 0 %}badge--active{% endif %}">
+                  {% set cnt = slot.count if slot else 0 %}
+                    <span class="badge {% if cnt > 0 %}badge--active{% endif %}" data-bucket="{{ tb }}-badge">
                       {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
                     </span>
                   </div>
-                  {% if slot and slot.members %}
-                    <div style="font-size:13px; color: var(--muted);">
+                  <div class="slot-members" data-bucket="{{ tb }}" style="font-size:13px; color: var(--muted);">
+                    {% if slot and slot.members %}
                       {%- set handles = slot.members -%}
                       {%- set show_handles = handles[:2] -%}
                       {%- set extra = handles|length - show_handles|length -%}
@@ -248,8 +248,8 @@
                         @{{ m }}{% if not loop.last %}, {% endif %}
                       {%- endfor -%}
                       {% if extra > 0 %} +{{ extra }}{% endif %}
-                    </div>
-                  {% endif %}
+                    {% endif %}
+                  </div>
                 </div>
               {% endfor %}
             </div>
@@ -351,6 +351,57 @@
                 }
                 setTimeout(() => { btn.textContent = original; }, 2000);
               });
+            })();
+
+            // Live refresh of slot counts/members
+            (function() {
+              const restaurantId = '{{ restaurant_id }}';
+              if (!restaurantId) return;
+
+              const badgeMap = {
+                'now': document.querySelector('[data-bucket=\"now-badge\"]'),
+                '30': document.querySelector('[data-bucket=\"30-badge\"]'),
+                '60': document.querySelector('[data-bucket=\"60-badge\"]'),
+              };
+              const memberMap = {
+                'now': document.querySelector('.slot-members[data-bucket=\"now\"]'),
+                '30': document.querySelector('.slot-members[data-bucket=\"30\"]'),
+                '60': document.querySelector('.slot-members[data-bucket=\"60\"]'),
+              };
+
+              function renderBadge(el, count) {
+                if (!el) return;
+                el.classList.toggle('badge--active', count > 0);
+                if (count === 1) el.textContent = '1 gre';
+                else if (count === 0) el.textContent = '0 gre';
+                else el.textContent = `${count} gredo`;
+              }
+
+              function renderMembers(el, members) {
+                if (!el) return;
+                if (!members || !members.length) { el.textContent = ''; return; }
+                const handles = members.slice(0, 2).map(m => `@${m}`);
+                const extra = members.length - handles.length;
+                el.textContent = handles.join(', ') + (extra > 0 ? ` +${extra}` : '');
+              }
+
+              async function refresh() {
+                try {
+                  const res = await fetch(`/api/waiting_board/${restaurantId}`);
+                  if (!res.ok) return;
+                  const data = await res.json();
+                  ['now','30','60'].forEach(tb => {
+                    const slot = data?.[tb] || {};
+                    renderBadge(badgeMap[tb], Number(slot.count || 0));
+                    renderMembers(memberMap[tb], slot.members || []);
+                  });
+                } catch (e) {
+                  // best effort; ignore
+                }
+              }
+
+              refresh();
+              setInterval(refresh, 5000);
             })();
 
             // GA: slot_filled — fire once when join form is submitted
