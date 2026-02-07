@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <title>BoniBuddy • Feed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg: #F6FBFE;
+      --card: #ffffff;
+      --text: #111111;
+      --muted: #5F6F7A;
+      --border: rgba(0,166,246,0.18);
+      --accent: #00A6F6;
+      --radius: 18px;
+      --shadow: 0 12px 32px rgba(0,166,246,0.10);
+    }
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card{
+      width: 100%;
+      max-width: 520px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 20px 24px;
+      backdrop-filter: blur(10px);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    h1{margin:0; font-size:20px; font-weight:800; text-align:left;}
+    .muted{color: var(--muted); font-size:13px;}
+    .list{display:flex; flex-direction:column; gap:10px;}
+    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #F6FCFF; color: var(--text); text-decoration:none; box-shadow: 0 6px 16px rgba(0,166,246,0.06);} 
+    .rest-row--active{background: #E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);} 
+    .rest-info{flex:1; min-width:0;}
+    .rest-name{font-size:15px; font-weight:600;}
+    .rest-sub{font-size:13px; color: var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7; white-space:nowrap;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
+    .status{font-size:12px; color: var(--muted);} 
+  </style>
+  {% include "_ga.html" %}
+</head>
+<body>
+  <div class="card">
+    <h1>Kdo gre kam?</h1>
+    <div id="status" class="status"></div>
+    <div id="list" class="list"></div>
+    <div id="empty" class="muted" style="display:none;">Trenutno ni aktivnih kartic.</div>
+    <a href="/" class="muted" style="font-size:12px; text-decoration:none;">↩ Nazaj</a>
+  </div>
+
+<script>
+  const INITIAL_ITEMS = {{ items | tojson }};
+  const bucketLabels = { now: 'Zdaj', 30: '+30', 60: '+60' };
+
+  const listEl = document.getElementById('list');
+  const emptyEl = document.getElementById('empty');
+  const statusEl = document.getElementById('status');
+
+  function render(items) {
+    listEl.innerHTML = '';
+    if (!items || items.length === 0) {
+      emptyEl.style.display = '';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    items.forEach(item => {
+      const a = document.createElement('a');
+      a.className = 'rest-row rest-row--active';
+      a.href = `/waiting/${item.restaurant_id}?t=${item.bucket}&join=1`;
+
+      const info = document.createElement('div');
+      info.className = 'rest-info';
+      info.innerHTML = `<div class="rest-name">${item.restaurant_name}</div>` +
+                       `<div class="rest-sub">${bucketLabels[item.bucket] || item.bucket} • ${item.window_label || ''}</div>`;
+
+      const badge = document.createElement('div');
+      badge.className = 'badge badge--active';
+      const cnt = item.count;
+      badge.textContent = cnt === 1 ? '1 gre' : `${cnt} gredo`;
+
+      a.appendChild(info);
+      a.appendChild(badge);
+      listEl.appendChild(a);
+    });
+  }
+
+  render(INITIAL_ITEMS);
+
+  async function refreshFeed() {
+    try {
+      const res = await fetch('/api/feed');
+      if (!res.ok) throw new Error('bad status');
+      const data = await res.json();
+      render(data.items || []);
+      statusEl.textContent = '';
+    } catch (e) {
+      statusEl.textContent = 'Posodobitev ni uspela, poskusim znova…';
+    }
+  }
+
+  setInterval(refreshFeed, 10000);
+</script>
+</body>
+</html>
