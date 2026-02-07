@@ -371,8 +371,11 @@ def cleanup_waiting_board(now: datetime | None = None) -> None:
                 waiting_slots.pop(key, None)
 
 
-def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
-    """Join (or move) a waiting slot; idempotent; auto-move across buckets."""
+def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str, referrer: str | None = None) -> dict:
+    """Join (or move) a waiting slot; idempotent; auto-move across buckets.
+
+    referrer: optional instagram handle of inviter for attribution (not persisted yet, only logged).
+    """
     if time_bucket not in ALLOWED_TIME_BUCKETS:
         return {"ok": False, "error": "invalid_time_bucket"}
     restaurant_id = (restaurant_id or "").strip().lower()
@@ -410,11 +413,12 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
             )
         )
     waiting_board_logger.info(
-        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s",
+        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s referrer=%s",
         restaurant_id,
         time_bucket,
         user_norm,
         existing[0].time_bucket if existing else None,
+        _normalize_instagram(referrer) if referrer else None,
     )
     return {"ok": True, "slot_id": slot.id, "moved": bool(existing), "previous_count": before_count}
 
@@ -544,6 +548,27 @@ def get_user_bucket(restaurant_id: str, user_id: str) -> Optional[str]:
     user_norm = _normalize_instagram(user_id)
     found = _find_member_slot(restaurant_id, user_norm)
     return found[0].time_bucket if found else None
+
+
+def get_user_membership(user_id: str) -> Optional[dict[str, str]]:
+    """Return the restaurant/time bucket where user currently has an active plan."""
+    user_norm = _normalize_instagram(user_id)
+    if not user_norm:
+        return None
+
+    cleanup_waiting_board()
+
+    with match_lock:
+        slot_lookup: dict[str, tuple[str, str]] = {
+            slot.id: (rid, tb) for (rid, tb), slot in waiting_slots.items()
+        }
+        for slot_id, members in slot_members.items():
+            for m in members:
+                if _normalize_instagram(m.user_id) == user_norm:
+                    rid, tb = slot_lookup.get(slot_id, (None, None))
+                    if rid and tb:
+                        return {"restaurant_id": rid, "time_bucket": tb}
+    return None
 
 
 def get_waiting_summary_for_location(location_id: str) -> List[dict[str, Any]]:

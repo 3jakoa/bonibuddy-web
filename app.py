@@ -402,7 +402,7 @@ def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | N
     primary_other = others[0] if others else ""
     bucket_label = {"now": "zdaj", "30": "čez 30 min", "60": "čez 60 min"}.get(bucket, bucket)
     instagram_url = f"https://instagram.com/{quote(primary_other)}" if primary_other else ""
-    share_url = f"/waiting/{restaurant_id}?t={bucket}&join=1"
+    share_url = f"/waiting/{restaurant_id}?t={bucket}&join=1&ref={quote(user)}"
     copy_message_for_dm = f"Hej! Vidim na BoniBuddy, da greš jest v {restaurant.name} {bucket_label}. A greva skupaj? 😊"
     copy_invite_message = f"Greš na bone? Grem v {restaurant.name} {bucket_label}. Pridruži se: {share_url}"
 
@@ -432,19 +432,32 @@ def waiting_join(
     restaurant_id: str = Form(...),
     time_bucket: str = Form(...),
     user_id: str = Form(...),
+    ref: str | None = Form(None),
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
     user_id = (user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing user_id")
-    res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, time_bucket=time_bucket)
+    existing_plan = engine.get_user_membership(user_id)
+    if existing_plan and existing_plan.get("restaurant_id") != (restaurant_id or "").strip().lower():
+        msg = "Imaš že aktiven plan. Najprej ga prekliči."
+        back = f"/waiting/{restaurant_id}?t={quote(time_bucket)}&msg={quote(msg)}"
+        return RedirectResponse(url=back, status_code=303)
+    res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, time_bucket=time_bucket, referrer=ref)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "join_failed"))
     prev_count = int(res.get("previous_count", 1))
     created_new = prev_count == 0
     back = f"/done/{restaurant_id}?t={quote(time_bucket)}&u={quote(user_id)}&created={'1' if created_new else '0'}"
-    return RedirectResponse(url=back, status_code=303)
+    resp = RedirectResponse(url=back, status_code=303)
+    resp.set_cookie(
+        "bb_uid",
+        value=user_id,
+        max_age=60 * 60 * 24 * 30,  # 30 dni
+        samesite="lax",
+    )
+    return resp
 
 
 @app.post("/waiting/leave")
