@@ -375,6 +375,17 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
         },
     )
 
+@app.get("/api/waiting_board/{restaurant_id}")
+def waiting_board_api(restaurant_id: str):
+    """Return live waiting board counts for polling on the client."""
+    if not FEATURE_WAITING_BOARD:
+        raise HTTPException(status_code=404)
+    restaurant = engine.get_restaurant(restaurant_id)
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="restaurant_not_found")
+    board = engine.get_waiting_board(restaurant_id) or {}
+    return board
+
 
 @app.get("/done/{restaurant_id}", response_class=HTMLResponse)
 def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | None = None):
