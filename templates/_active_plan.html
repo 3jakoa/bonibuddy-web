@@ -1,6 +1,6 @@
 {% if active_plan %}
   {% set tb_labels = {'now':'Zdaj', '30':'+30', '60':'+60'} %}
-  <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; box-shadow: 0 8px 20px rgba(0,166,246,0.08);">
+  <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
     <div>
       <div style="font-weight:700;">Tvoj plan</div>
       <div style="font-size:13px; color: var(--muted);">{{ active_plan.restaurant.name }} · {{ tb_labels.get(active_plan.bucket, active_plan.bucket) }}</div>
