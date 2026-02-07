@@ -258,7 +258,6 @@
 <body>
   <div class="card">
     {% if feature_waiting_board %}
-      {% include "_active_plan.html" %}
       <a class="live-feed-icon" href="/feed" aria-label="Live feed" title="Live feed">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
           <rect width="256" height="256" fill="none"/>
@@ -299,6 +298,7 @@
         </svg>
       </div>
       <h1 style="margin-bottom:6px;">Greš na bone?</h1>
+      {% include "_active_plan.html" %}
 
       <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
       <div class="chip-row chip-row--time">
