@@ -285,6 +285,10 @@
       </div>
       <h1 style="margin-bottom:6px;">Greš na bone?</h1>
 
+      <div class="chip-row" style="justify-content:flex-end; margin-bottom:6px;">
+        <a class="chip" href="/feed" style="height:38px; padding:0 14px;">🔄 Live feed</a>
+      </div>
+
       <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
       <div class="chip-row chip-row--time">
         <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">
