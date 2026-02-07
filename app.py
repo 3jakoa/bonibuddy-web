@@ -19,6 +19,7 @@ app = FastAPI()
 FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "true").lower() in {"1", "true", "yes"}
 IG_USERNAME = "bonibuddy"
 LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
+BUCKET_ORDER = {"now": 0, "30": 1, "60": 2}
 
 
 def compute_time_windows(now: datetime | None = None) -> dict:
@@ -34,6 +35,35 @@ def compute_time_windows(now: datetime | None = None) -> dict:
             "label": f"{start:%H:%M}–{end:%H:%M}",
         }
     return windows
+
+
+def _build_feed_items(now: datetime | None = None) -> list[dict]:
+    """Collect active slots (count>0) across all restaurants/buckets."""
+    windows = compute_time_windows(now=now)
+    rows: list[dict] = []
+    for r in engine.list_restaurants():
+        board = engine.get_waiting_board(r.id)
+        for bucket, info in (board or {}).items():
+            count = int(info.get("count") or 0)
+            if count <= 0:
+                continue
+            rows.append(
+                {
+                    "restaurant_id": r.id,
+                    "restaurant_name": r.name,
+                    "bucket": bucket,
+                    "count": count,
+                    "window_label": windows.get(bucket, {}).get("label", ""),
+                }
+            )
+    rows.sort(
+        key=lambda x: (
+            BUCKET_ORDER.get(x["bucket"], 99),
+            -x["count"],
+            x["restaurant_name"].lower(),
+        )
+    )
+    return rows
 
 def _get_env(name: str) -> str:
     v = os.getenv(name, "").strip()
@@ -237,6 +267,33 @@ def choose(request: Request):
             "active_plan": _get_active_plan(request.cookies.get("bb_uid")),
         },
     )
+
+
+@app.get("/feed", response_class=HTMLResponse)
+def feed(request: Request):
+    if not FEATURE_WAITING_BOARD:
+        return RedirectResponse(url="/", status_code=303)
+    items = _build_feed_items()
+    return templates.TemplateResponse(
+        "feed.html",
+        {
+            "request": request,
+            "items": items,
+            "bucket_order": BUCKET_ORDER,
+            "time_windows": compute_time_windows(),
+        },
+    )
+
+
+@app.get("/api/feed")
+def api_feed():
+    if not FEATURE_WAITING_BOARD:
+        raise HTTPException(status_code=404, detail="feature_disabled")
+    items = _build_feed_items()
+    return {
+        "items": items,
+        "generated_at_iso": datetime.now(LOCAL_TZ).isoformat(),
+    }
 
 @app.post("/go", response_class=HTMLResponse)
 def go(
