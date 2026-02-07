@@ -1,0 +1,66 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 6 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 2754 >>
+stream
+BT /F2 16 Tf 60 800 Td (BoniBuddy app snapshot) Tj ET
+BT /F2 13 Tf 60 778 Td (What it is) Tj ET
+BT /F1 11 Tf 60 762 Td (FastAPI + Jinja web app that helps students going for "bone" meals coordinate and see who's headed to restaurants now or soon.) Tj ET
+BT /F2 13 Tf 60 742 Td (Who it's for) Tj ET
+BT /F1 11 Tf 60 726 Td (Students using Slovenian subsidized meals \("bone"\), focused on Ljubljana restaurants.) Tj ET
+BT /F2 13 Tf 60 706 Td (What it does) Tj ET
+BT /F1 11 Tf 70 690 Td (- Live waiting board showing per-restaurant counts for now/+30/+60 minute buckets.) Tj ET
+BT /F1 11 Tf 70 676 Td (- Join or leave a time bucket; auto-moves members forward as time passes.) Tj ET
+BT /F1 11 Tf 70 662 Td (- Matchmaking with mutual gender preference plus city/location filters; shows match page on pair.) Tj ET
+BT /F1 11 Tf 70 648 Td (- Web push opt-in per request id; sends best-effort push on matches when VAPID keys set.) Tj ET
+BT /F1 11 Tf 70 634 Td (- Searchable restaurant list seeded from data/restaurants.json \(Ljubljana\).) Tj ET
+BT /F1 11 Tf 70 620 Td (- PWA assets \(manifest, service worker, icons\) for add-to-home experience.) Tj ET
+BT /F2 13 Tf 60 600 Td (How it works) Tj ET
+BT /F1 11 Tf 70 584 Td (- FastAPI app \(app.py\) serves HTML \(Jinja templates\) and static/PWA assets.) Tj ET
+BT /F1 11 Tf 70 570 Td (- engine_web.py holds domain logic and in-memory stores: restaurants, waiting slots, requests, push subs.) Tj ET
+BT /F1 11 Tf 70 556 Td (- Matching: form submit -> add_request_with_pairs -> checks waiting list under lock -> pairs users on mutual prefs/time/location -> optional web push + GA4; else queues.) Tj ET
+BT /F1 11 Tf 70 542 Td (- Waiting board: get_waiting_board aggregates counts per restaurant/bucket; UI renders via template routes.) Tj ET
+BT /F1 11 Tf 70 528 Td (- Env flags for GA4 and VAPID are optional and non-blocking.) Tj ET
+BT /F2 13 Tf 60 508 Td (How to run) Tj ET
+BT /F1 11 Tf 70 492 Td (1. python3 -m venv .venv && source .venv/bin/activate) Tj ET
+BT /F1 11 Tf 70 478 Td (2. pip install -r requirements.txt) Tj ET
+BT /F1 11 Tf 70 464 Td (3. uvicorn app:app --reload --port 8000) Tj ET
+BT /F1 11 Tf 70 450 Td (4. Open http://localhost:8000/) Tj ET
+BT /F1 11 Tf 70 436 Td (5. Optional: set VAPID_PRIVATE_KEY, VAPID_SUBJECT, GA4_MEASUREMENT_ID, GA4_API_SECRET for push/analytics.) Tj ET
+BT /F2 13 Tf 60 416 Td (Not found in repo) Tj ET
+BT /F1 11 Tf 70 400 Td (- Pricing/hosting details) Tj ET
+BT /F1 11 Tf 70 386 Td (- Authentication or user identity beyond Instagram handle) Tj ET
+BT /F1 11 Tf 70 372 Td (- Persistent storage/DB \(state is in-memory\)) Tj ET
+BT /F1 11 Tf 70 358 Td (- Coverage outside Ljubljana restaurant seed) Tj ET
+BT /F1 10 Tf 60 60 Td (bonibuddy-web • generated on Feb 7, 2026) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000321 00000 n 
+0000003127 00000 n 
+
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3202
+%%EOF

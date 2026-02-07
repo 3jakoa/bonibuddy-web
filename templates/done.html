@@ -177,13 +177,16 @@
       }
 
       btn.addEventListener('click', async () => {
+        try { window.gtag && gtag('event', 'share_invite_click', { restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
         try{
           await shareNative();
           btn.textContent = 'Poslano ✅';
+          try { window.gtag && gtag('event', 'share_invite_sent', { method: 'native', restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
         }catch(err){
           try{
             await copyFallback();
             btn.textContent = 'Povezava kopirana';
+            try { window.gtag && gtag('event', 'share_invite_sent', { method: 'copy', restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
           }catch(_err){
             btn.textContent = 'Deljenje ni uspelo';
           }
