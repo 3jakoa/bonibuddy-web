@@ -59,6 +59,7 @@
       height: calc(100% - 48px);
       max-height: calc(100dvh - 48px);
       min-height: 0;
+      position: relative;
     }
 
     h1{
@@ -244,14 +245,12 @@
     .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: var(--accent); text-decoration:none; font-weight:700; font-size:14px;}
     .suggest-cta__link:hover{color: #005f8f; text-decoration: underline;}
     .suggest-cta__hint{font-size:12px; color: var(--muted); margin-top:4px;}
-    .cta-row{display:flex; justify-content:flex-end; margin:6px 0 10px;}
-    .live-feed-btn{display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; border-radius:999px; border:1.5px solid var(--accent); background: rgba(0,166,246,0.08); color: var(--accent); font-weight:700; text-decoration:none; box-shadow:none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;}
-    .live-feed-btn:hover, .live-feed-btn:focus{background: var(--accent); color:#ffffff; box-shadow: 0 8px 18px rgba(0,166,246,0.25); outline:none;}
-    .live-feed-btn:active{transform: scale(0.98); background:#008ed5; color:#ffffff;}
-    .live-feed-btn svg{width:16px; height:16px; display:block; fill:currentColor;}
+    .live-feed-icon{position:absolute; top:14px; right:14px; display:inline-flex; justify-content:center; align-items:center; width:40px; height:40px; border-radius:50%; border:1.25px solid var(--accent); background: rgba(0,166,246,0.08); color: var(--accent); text-decoration:none; box-shadow:none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;}
+    .live-feed-icon:hover, .live-feed-icon:focus{background: var(--accent); color:#ffffff; box-shadow: 0 8px 18px rgba(0,166,246,0.25); outline:none;}
+    .live-feed-icon:active{transform: scale(0.97); background:#008ed5; color:#ffffff;}
+    .live-feed-icon svg{width:18px; height:18px; display:block; fill:currentColor;}
     @media (max-width: 480px){
-      .cta-row{justify-content:stretch;}
-      .live-feed-btn{width:100%; justify-content:center;}
+      .live-feed-icon{width:36px; height:36px; top:12px; right:12px;}
     }
   </style>
   {% include "_ga.html" %}
@@ -260,6 +259,13 @@
   <div class="card">
     {% if feature_waiting_board %}
       {% include "_active_plan.html" %}
+      <a class="live-feed-icon" href="/feed" aria-label="Live feed" title="Live feed">
+        <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+          <rect width="256" height="256" fill="none"/>
+          <path d="M96,192a32,32,0,0,0,64,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+          <path d="M56,104a72,72,0,0,1,144,0c0,35.82,8.3,64.6,14.9,76A8,8,0,0,1,208,192H48a8,8,0,0,1-6.88-12C47.71,168.6,56,139.81,56,104Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+        </svg>
+      </a>
       <div class="logo-placeholder" aria-hidden="true">
         <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <g clip-path="url(#clip0_187_175)">
@@ -293,13 +299,6 @@
         </svg>
       </div>
       <h1 style="margin-bottom:6px;">Greš na bone?</h1>
-
-      <div class="cta-row">
-        <a class="live-feed-btn" href="/feed" aria-label="Live feed" title="Prikaži vse aktivne bone">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5a7 7 0 1 1-6.56 9.21c-.17-.47.08-.99.55-1.15.47-.17.99.08 1.15.55A5 5 0 1 0 12 7h.79l-1.15 1.15a.75.75 0 1 0 1.06 1.06L15.56 6l-2.86-3.21a.75.75 0 0 0-1.06 1.06L12.79 5H12Z"/></svg>
-          Live feed
-        </a>
-      </div>
 
       <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
       <div class="chip-row chip-row--time">
