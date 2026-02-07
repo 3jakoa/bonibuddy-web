@@ -371,6 +371,43 @@ def cleanup_waiting_board(now: datetime | None = None) -> None:
                 waiting_slots.pop(key, None)
 
 
+def _remove_user_from_all_slots(user_norm: str, exclude_restaurant: str | None = None) -> int:
+    """Remove user from every waiting slot (any restaurant/bucket).
+
+    Caller should hold ``match_lock``. Returns number of memberships removed.
+    ``exclude_restaurant`` can skip slots for that restaurant when provided.
+    """
+
+    if not user_norm:
+        return 0
+
+    removed = 0
+    exclude = (exclude_restaurant or "").strip().lower() or None
+
+    for key in list(waiting_slots.keys()):
+        restaurant_id, _tb = key
+        if exclude and restaurant_id == exclude:
+            continue
+
+        slot = waiting_slots.get(key)
+        if not slot:
+            continue
+
+        members = slot_members.get(slot.id, [])
+        kept = [m for m in members if _normalize_instagram(m.user_id) != user_norm]
+        if len(kept) != len(members):
+            removed += len(members) - len(kept)
+            if kept:
+                slot_members[slot.id] = kept
+            else:
+                slot_members.pop(slot.id, None)
+
+        if not slot_members.get(slot.id):
+            waiting_slots.pop(key, None)
+
+    return removed
+
+
 def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
     """Join (or move) a waiting slot; idempotent; auto-move across buckets."""
     if time_bucket not in ALLOWED_TIME_BUCKETS:
@@ -381,8 +418,24 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
     cleanup_waiting_board()
 
     with match_lock:
-        # Remove from other bucket if present
+        # Short-circuit idempotency: already in target bucket for this restaurant.
+        target_slot_pre = waiting_slots.get((restaurant_id, time_bucket))
+        if target_slot_pre:
+            for m in _get_members(target_slot_pre.id):
+                if _normalize_instagram(m.user_id) == user_norm:
+                    return {
+                        "ok": True,
+                        "slot_id": target_slot_pre.id,
+                        "already": True,
+                        "moved": False,
+                        "previous_count": len(_get_members(target_slot_pre.id)),
+                    }
+
+        # Remember if user was in another bucket of the same restaurant (for moved flag).
         existing = _find_member_slot(restaurant_id, user_norm)
+
+        removed_count = _remove_user_from_all_slots(user_norm)
+
         if existing:
             slot_prev, member_prev = existing
             slot_members[slot_prev.id] = [m for m in _get_members(slot_prev.id) if m is not member_prev]
@@ -399,7 +452,7 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
                     "already": True,
                     "moved": bool(existing),
                     "previous_count": before_count,
-                }
+            }
 
         members.append(
             SlotMember(
@@ -410,11 +463,12 @@ def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
             )
         )
     waiting_board_logger.info(
-        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s",
+        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s removed=%s",
         restaurant_id,
         time_bucket,
         user_norm,
         existing[0].time_bucket if existing else None,
+        removed_count,
     )
     return {"ok": True, "slot_id": slot.id, "moved": bool(existing), "previous_count": before_count}
 
