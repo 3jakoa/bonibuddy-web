@@ -2,7 +2,7 @@
   {% set tb_labels = {'now':'Zdaj', '30':'+30', '60':'+60'} %}
   {% set ref_handle = (request.cookies.get('bb_uid') or '')|urlencode %}
   {% set share_url = '/waiting/' ~ active_plan.restaurant.id ~ '?t=' ~ active_plan.bucket ~ '&join=1&ref=' ~ ref_handle %}
-  <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; box-shadow: 0 8px 20px rgba(0,166,246,0.08);">
+  <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
     <div>
       <div style="font-weight:700;">Tvoj plan</div>
       <div style="font-size:13px; color: var(--muted);">{{ active_plan.restaurant.name }} · {{ tb_labels.get(active_plan.bucket, active_plan.bucket) }}</div>
@@ -15,13 +15,13 @@
               data-restaurant="{{ active_plan.restaurant.id }}"
               data-bucket="{{ active_plan.bucket }}"
               class="chip chip--active"
-              style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:var(--accent); border-color:var(--accent); color:#ffffff; box-shadow: 0 6px 16px rgba(0,166,246,0.25);">
+              style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:var(--accent); border-color:var(--accent); color:#ffffff;">
         Deli
       </button>
       <form method="post" action="/plan/cancel" style="margin:0;">
         <input type="hidden" name="restaurant_id" value="{{ active_plan.restaurant.id }}">
         <input type="hidden" name="time_bucket" value="{{ active_plan.bucket }}">
-        <button type="submit" class="chip" style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:#EAF7FD; border:1px solid #92DBF3; color:#007FBF; box-shadow: 0 6px 16px rgba(0,166,246,0.08);">Prekliči</button>
+        <button type="submit" class="chip" style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:#EAF7FD; border:1px solid #92DBF3; color:#007FBF;">Prekliči</button>
       </form>
     </div>
   </div>
