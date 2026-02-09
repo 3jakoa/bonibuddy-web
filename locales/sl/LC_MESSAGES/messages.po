@@ -1,0 +1,211 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bonibuddy\n"
+"POT-Creation-Date: 2026-02-09 00:00+0000\n"
+"Language: sl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# Default Slovenian strings are identity translations
+msgid "BoniBuddy"
+msgstr "BoniBuddy"
+
+msgid "Greš na bone?"
+msgstr "Greš na bone?"
+
+msgid "Kdaj greš"
+msgstr "Kdaj greš"
+
+msgid "Zdaj"
+msgstr "Zdaj"
+
+msgid "Poišči kam greš"
+msgstr "Poišči kam greš"
+
+msgid "Išči po imenu (Ljubljana)"
+msgstr "Išči po imenu (Ljubljana)"
+
+msgid "Počisti iskanje"
+msgstr "Počisti iskanje"
+
+msgid "1 gre"
+msgstr "1 gre"
+
+msgid "0 gre"
+msgstr "0 gre"
+
+msgid "%(count)s gredo"
+msgstr "%(count)s gredo"
+
+msgid "Ni zadetkov."
+msgstr "Ni zadetkov."
+
+msgid "Greš na bone"
+msgstr "Greš na bone"
+
+msgid "Nazaj na začetek"
+msgstr "Nazaj na začetek"
+
+msgid "Follow us on Instagram"
+msgstr "Sledi nam na Instagramu"
+
+msgid "Preklopi jezik"
+msgstr "Preklopi jezik"
+
+msgid "Live feed"
+msgstr "Live feed"
+
+msgid "Kam greš jest?"
+msgstr "Kam greš jest?"
+
+msgid "Izbrano:"
+msgstr "Izbrano:"
+
+msgid "Grem zdaj"
+msgstr "Grem zdaj"
+
+msgid "Grem čez 30 min"
+msgstr "Grem čez 30 min"
+
+msgid "Grem čez 60 min"
+msgstr "Grem čez 60 min"
+
+msgid "Išči menzo po imenu"
+msgstr "Išči menzo po imenu"
+
+msgid "Pridruži se"
+msgstr "Pridruži se"
+
+msgid "MVP: brez realtime osveževanja, posodobi stran ročno."
+msgstr "MVP: brez realtime osveževanja, posodobi stran ročno."
+
+msgid "BoniBuddy • Feed"
+msgstr "BoniBuddy • Feed"
+
+msgid "Kdo gre kam?"
+msgstr "Kdo gre kam?"
+
+msgid "Trenutno ni aktivnih kartic."
+msgstr "Trenutno ni aktivnih kartic."
+
+msgid "Nazaj"
+msgstr "Nazaj"
+
+msgid "BoniBuddy • Čakam"
+msgstr "BoniBuddy • Čakam"
+
+msgid "tvoj Instagram"
+msgstr "tvoj Instagram"
+
+msgid "Potrdi"
+msgstr "Potrdi"
+
+msgid "Ti si prijavljen za:"
+msgstr "Ti si prijavljen za:"
+
+msgid "Prekliči"
+msgstr "Prekliči"
+
+msgid "Nazaj na lokacije"
+msgstr "Nazaj na lokacije"
+
+msgid "Tvoj plan"
+msgstr "Tvoj plan"
+
+msgid "Deli"
+msgstr "Deli"
+
+msgid "Zaključeno"
+msgstr "Zaključeno"
+
+msgid "Plan objavljen"
+msgstr "Plan objavljen"
+
+msgid "Dogovorjeno ✅"
+msgstr "Dogovorjeno ✅"
+
+msgid "Kontaktiraj na Instagramu"
+msgstr "Kontaktiraj na Instagramu"
+
+msgid "Prekliči plan"
+msgstr "Prekliči plan"
+
+msgid "Nazaj na pregled"
+msgstr "Nazaj na pregled"
+
+msgid "Plan objavljen 🎉"
+msgstr "Plan objavljen 🎉"
+
+msgid "Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo."
+msgstr "Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo."
+
+msgid "Deli povabilo"
+msgstr "Deli povabilo"
+
+msgid "Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."
+msgstr "Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."
+
+msgid "Neveljavno mesto."
+msgstr "Neveljavno mesto."
+
+msgid "Neveljavna lokacija."
+msgstr "Neveljavna lokacija."
+
+msgid "Neveljavna izbira časa."
+msgstr "Neveljavna izbira časa."
+
+msgid "Neveljavna izbira preference."
+msgstr "Neveljavna izbira preference."
+
+msgid "Neveljavna izbira spola."
+msgstr "Neveljavna izbira spola."
+
+msgid "Vpiši veljavno Instagram uporabniško ime."
+msgstr "Vpiši veljavno Instagram uporabniško ime."
+
+msgid "Jezik"
+msgstr "Jezik"
+
+msgid "✅ Našli smo družbo!"
+msgstr "✅ Našli smo družbo!"
+
+msgid "Klikni spodaj in pošlji prvo sporočilo. Najbolje je, da se dobita na javnem mestu."
+msgstr "Klikni spodaj in pošlji prvo sporočilo. Najbolje je, da se dobita na javnem mestu."
+
+msgid "Za večerjo 🍕"
+msgstr "Za večerjo 🍕"
+
+msgid "Za kosilo 🍝"
+msgstr "Za kosilo 🍝"
+
+msgid "Instagram uporabnik"
+msgstr "Instagram uporabnik"
+
+msgid "Predlagano sporočilo"
+msgstr "Predlagano sporočilo"
+
+msgid "Kopiraj sporočilo"
+msgstr "Kopiraj sporočilo"
+
+msgid "Odpri Instagram profil"
+msgstr "Odpri Instagram profil"
+
+msgid "MVP: delimo samo kontakt za ta match."
+msgstr "MVP: delimo samo kontakt za ta match."
+
+msgid "Išči znova"
+msgstr "Išči znova"
+
+msgid "Dodaj svoj plan"
+msgstr "Dodaj svoj plan"
+
+msgid "Dodaj svoj načrt (prihaja). Trenutno pripravljamo obrazec."
+msgstr "Dodaj svoj načrt (prihaja). Trenutno pripravljamo obrazec."
+
+msgid "Izbrana menza:"
+msgstr "Izbrana menza:"
+
+msgid "Izbrana lokacija:"
+msgstr "Izbrana lokacija:"

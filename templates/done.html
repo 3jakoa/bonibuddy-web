@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • {{ 'Zaključeno' if joined_existing else 'Plan objavljen' }}</title>
+  <title>BoniBuddy • {{ _('Zaključeno') if joined_existing else _('Plan objavljen') }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -81,11 +81,37 @@
     .footer-link{display:flex; justify-content:flex-start;}
     .card-body{display:flex; flex-direction:column; gap:12px; align-items:center; min-height:0;}
     .body-text{font-size:14px; color: var(--muted); text-align:center; line-height:1.5; margin:0 4px 6px;}
+    .lang-toggle{
+      position:absolute;
+      top:12px; left:12px;
+      width:40px; height:40px;
+      border-radius:50%;
+      border:1.25px solid var(--accent);
+      overflow:hidden;
+      padding:0;
+      background: #ffffff;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
+      display:flex; align-items:center; justify-content:center;
+      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .lang-toggle:hover, .lang-toggle:focus{
+      background: rgba(0,166,246,0.08);
+      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
+      outline:none;
+    }
+    .lang-toggle:active{transform: scale(0.97);}
+    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
   </style>
 </head>
 <body>
   <div class="page">
     <div class="card">
+      {% set lang = get_locale %}
+      {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
+      <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
+        <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
+      </button>
       <div class="card-body">
         <div class="logo-placeholder" aria-hidden="true">
           <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -120,41 +146,52 @@
           </svg>
         </div>
         {% if joined_existing %}
-          <h1>Dogovorjeno ✅</h1>
+          <h1>{{ _("Dogovorjeno ✅") }}</h1>
 
           <div class="cta-stack">
-            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">{{ _("Kontaktiraj na Instagramu") }}</a>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="time_bucket" value="{{ bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
-              <button class="btn-secondary" type="submit">Prekliči plan</button>
+              <button class="btn-secondary" type="submit">{{ _("Prekliči plan") }}</button>
             </form>
           </div>
           <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
+            <a class="link" href="/">{{ _("Nazaj na pregled") }}</a>
           </div>
         {% else %}
-          <h1>Plan objavljen 🎉</h1>
-          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo.</div>
+          <h1>{{ _("Plan objavljen 🎉") }}</h1>
+          <div class="body-text">{{ _("Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo.") }}</div>
 
           <div class="cta-stack">
-            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
+            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">{{ _("Deli povabilo") }}</button>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="time_bucket" value="{{ bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
-              <button class="btn-secondary" type="submit">Prekliči plan</button>
+              <button class="btn-secondary" type="submit">{{ _("Prekliči plan") }}</button>
             </form>
           </div>
           <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
+            <a class="link" href="/">{{ _("Nazaj na pregled") }}</a>
           </div>
         {% endif %}
       </div>
     </div>
   </div>
   <script>
+    (function() {
+      const btn = document.querySelector('.lang-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
+        const next = current === 'sl' ? 'en' : 'sl';
+        document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        window.location.reload();
+      });
+    })();
+
     (function(){
       const btn = document.getElementById('shareInviteBtn');
       if(!btn) return;

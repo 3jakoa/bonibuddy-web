@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
   <title>BoniBuddy • Čakam</title>
@@ -207,18 +207,44 @@
     .slot-left{display:flex; flex-direction:column; gap:4px; align-items:flex-start;}
     .slot-label{font-weight:700;}
   .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin:0;}
+    .lang-toggle{
+      position:absolute;
+      top:12px; left:12px;
+      width:40px; height:40px;
+      border-radius:50%;
+      border:1.25px solid var(--accent);
+      overflow:hidden;
+      padding:0;
+      background: #ffffff;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
+      display:flex; align-items:center; justify-content:center;
+      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .lang-toggle:hover, .lang-toggle:focus{
+      background: rgba(0,166,246,0.08);
+      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
+      outline:none;
+    }
+    .lang-toggle:active{transform: scale(0.97);}
+    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
   </style>
   {% include "_ga.html" %}
 </head>
 <body>
   <div class="page">
     <div class="card">
+      {% set lang = get_locale %}
+      {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
+      <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
+        <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
+      </button>
       <div class="card-body">
         {% if feature_waiting_board %}
           {% include "_active_plan.html" %}
           <h1>📍 {{ restaurant.name }}</h1>
           {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
-          {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
+          {% set tb_labels = {'now': _('Zdaj'), '30': '+30 min', '60': '+60 min'} %}
 
           <form method="post" action="/waiting/join" id="joinForm" style="display:flex; flex-direction:column; gap:0; min-height:0;">
             <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
@@ -236,7 +262,7 @@
                     </div>
                   {% set cnt = slot.count if slot else 0 %}
                     <span class="badge {% if cnt > 0 %}badge--active{% endif %}" data-bucket="{{ tb }}-badge">
-                      {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+                      {% if cnt == 1 %}{{ _("1 gre") }}{% elif cnt == 0 %}{{ _("0 gre") }}{% else %}{{ _("%(count)s gredo", count=cnt) }}{% endif %}
                     </span>
                   </div>
                   <div class="slot-members" data-bucket="{{ tb }}" style="font-size:13px; color: var(--muted);">
@@ -258,26 +284,38 @@
               <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
                 <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
               </svg>
-              <input id="userIdInput" name="user_id" type="text" placeholder="tvoj Instagram" value="{{ user_id }}" required>
+              <input id="userIdInput" name="user_id" type="text" placeholder="{{ _('tvoj Instagram') }}" value="{{ user_id }}" required>
             </div>
             <div class="cta-row">
-              <button type="submit">Potrdi</button>
+              <button type="submit">{{ _("Potrdi") }}</button>
             </div>
           </form>
 
           {% if user_bucket %}
             <div class="status">
-              <span class="pill">Ti si prijavljen za: {{ tb_labels[user_bucket] }}</span>
+              <span class="pill">{{ _("Ti si prijavljen za:") }} {{ tb_labels[user_bucket] }}</span>
             </div>
             <form method="post" action="/waiting/leave" style="margin-top:10px;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
               <input type="hidden" name="time_bucket" value="{{ user_bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
-              <button class="btn" type="submit" style="width:100%; background:#ffffff; color: var(--accent); border:1px solid var(--accent);">Prekliči</button>
+              <button class="btn" type="submit" style="width:100%; background:#ffffff; color: var(--accent); border:1px solid var(--accent);">{{ _("Prekliči") }}</button>
             </form>
           {% endif %}
-          <a class="link" href="/" style="display:inline-block; margin-top:16px;">Nazaj na lokacije</a>
+          <a class="link" href="/" style="display:inline-block; margin-top:16px;">{{ _("Nazaj na lokacije") }}</a>
           <script>
+            (function() {
+              const btn = document.querySelector('.lang-toggle');
+              if (btn) {
+                btn.addEventListener('click', () => {
+                  const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
+                  const next = current === 'sl' ? 'en' : 'sl';
+                  document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+                  window.location.reload();
+                });
+              }
+            })();
+
             (function() {
               const focus = {{ 'true' if join_focus else 'false' }};
               if (focus) {

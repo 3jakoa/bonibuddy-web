@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • Kam greš jest?</title>
+  <title>{{ _("BoniBuddy • Kam greš jest?") }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -63,21 +63,47 @@
     .btn{padding:12px 14px; border-radius:12px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; display:inline-block;}
     .btn:hover{background:#008ed5;}
     .foot{margin-top: 18px; font-size: 11px; color: var(--muted); text-align: center;}
+    .lang-toggle{
+      position:absolute;
+      top:12px; left:12px;
+      width:40px; height:40px;
+      border-radius:50%;
+      border:1.25px solid var(--accent);
+      overflow:hidden;
+      padding:0;
+      background: #ffffff;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
+      display:flex; align-items:center; justify-content:center;
+      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .lang-toggle:hover, .lang-toggle:focus{
+      background: rgba(0,166,246,0.08);
+      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
+      outline:none;
+    }
+    .lang-toggle:active{transform: scale(0.97);}
+    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
   </style>
   {% include "_ga.html" %}
 </head>
 <body>
   <div class="card">
+    {% set lang = get_locale %}
+    {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
+    <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
+      <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
+    </button>
     {% include "_active_plan.html" %}
     <div class="header">
-      <div class="header-title">Kam greš jest?</div>
-      <div class="rest-sub">Izbrano: {% if time_bucket == 'now' %}Grem zdaj{% elif time_bucket == '30' %}Grem čez 30 min{% else %}Grem čez 60 min{% endif %}</div>
+      <div class="header-title">{{ _("Kam greš jest?") }}</div>
+      <div class="rest-sub">{{ _("Izbrano:") }} {% if time_bucket == 'now' %}{{ _("Grem zdaj") }}{% elif time_bucket == '30' %}{{ _("Grem čez 30 min") }}{% else %}{{ _("Grem čez 60 min") }}{% endif %}</div>
     </div>
     <form class="search-bar" method="get" action="/choose">
       <input type="hidden" name="t" value="{{ time_bucket }}">
-      <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo po imenu" autocomplete="off">
+      <input type="text" name="q" value="{{ query }}" placeholder="{{ _('Išči menzo po imenu') }}" autocomplete="off">
       {% if query %}
-        <button type="button" class="search-clear" aria-label="Počisti iskanje"
+        <button type="button" class="search-clear" aria-label="{{ _('Počisti iskanje') }}"
                 onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
       {% endif %}
     </form>
@@ -93,17 +119,28 @@
             <div style="display:flex; align-items:center;">
               {% set cnt = item.total_waiting %}
               <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
-                {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
+                {% if cnt == 1 %}{{ _("1 gre") }}{% elif cnt == 0 %}{{ _("0 gre") }}{% else %}{{ _("%(count)s gredo", count=cnt) }}{% endif %}
               </div>
-              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">Join</a>
+              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">{{ _("Pridruži se") }}</a>
             </div>
           </div>
         {% endfor %}
       {% endif %}
     </div>
-    <div class="foot">MVP: brez realtime osveževanja, posodobi stran ročno.</div>
+    <div class="foot">{{ _("MVP: brez realtime osveževanja, posodobi stran ročno.") }}</div>
   </div>
   <script>
+    (function() {
+      const btn = document.querySelector('.lang-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
+        const next = current === 'sl' ? 'en' : 'sl';
+        document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+        window.location.reload();
+      });
+    })();
+
     (function() {
       const searchInput = document.querySelector('.search-bar input[name="q"]');
       const form = searchInput && searchInput.form;
