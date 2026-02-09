@@ -51,37 +51,11 @@
     .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7; white-space:nowrap;}
     .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
     .status{font-size:12px; color: var(--muted);} 
-    .lang-toggle{
-      position:absolute;
-      top:12px; left:12px;
-      width:40px; height:40px;
-      border-radius:50%;
-      border:1.25px solid var(--accent);
-      overflow:hidden;
-      padding:0;
-      background: #ffffff;
-      cursor:pointer;
-      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
-      display:flex; align-items:center; justify-content:center;
-      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-    }
-    .lang-toggle:hover, .lang-toggle:focus{
-      background: rgba(0,166,246,0.08);
-      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
-      outline:none;
-    }
-    .lang-toggle:active{transform: scale(0.97);}
-    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
   </style>
   {% include "_ga.html" %}
 </head>
 <body>
   <div class="card" style="position:relative;">
-    {% set lang = get_locale %}
-    {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
-    <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
-      <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
-    </button>
     <h1>{{ _("Kdo gre kam?") }}</h1>
     <div id="status" class="status"></div>
     <div id="list" class="list"></div>
@@ -90,17 +64,6 @@
   </div>
 
 <script>
-  (function() {
-    const btn = document.querySelector('.lang-toggle');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
-      const next = current === 'sl' ? 'en' : 'sl';
-      document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-      window.location.reload();
-    });
-  })();
-
   const INITIAL_ITEMS = {{ items | tojson }};
   const bucketLabels = { now: '{{ _("Zdaj") }}', 30: '+30', 60: '+60' };
 

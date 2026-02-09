@@ -63,37 +63,11 @@
     .btn{padding:12px 14px; border-radius:12px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; display:inline-block;}
     .btn:hover{background:#008ed5;}
     .foot{margin-top: 18px; font-size: 11px; color: var(--muted); text-align: center;}
-    .lang-toggle{
-      position:absolute;
-      top:12px; left:12px;
-      width:40px; height:40px;
-      border-radius:50%;
-      border:1.25px solid var(--accent);
-      overflow:hidden;
-      padding:0;
-      background: #ffffff;
-      cursor:pointer;
-      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
-      display:flex; align-items:center; justify-content:center;
-      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-    }
-    .lang-toggle:hover, .lang-toggle:focus{
-      background: rgba(0,166,246,0.08);
-      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
-      outline:none;
-    }
-    .lang-toggle:active{transform: scale(0.97);}
-    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
   </style>
   {% include "_ga.html" %}
 </head>
 <body>
   <div class="card">
-    {% set lang = get_locale %}
-    {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
-    <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
-      <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
-    </button>
     {% include "_active_plan.html" %}
     <div class="header">
       <div class="header-title">{{ _("Kam greš jest?") }}</div>
@@ -130,17 +104,6 @@
     <div class="foot">{{ _("MVP: brez realtime osveževanja, posodobi stran ročno.") }}</div>
   </div>
   <script>
-    (function() {
-      const btn = document.querySelector('.lang-toggle');
-      if (!btn) return;
-      btn.addEventListener('click', () => {
-        const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
-        const next = current === 'sl' ? 'en' : 'sl';
-        document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-        window.location.reload();
-      });
-    })();
-
     (function() {
       const searchInput = document.querySelector('.search-bar input[name="q"]');
       const form = searchInput && searchInput.form;

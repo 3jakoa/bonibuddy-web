@@ -280,7 +280,7 @@
 <body>
   <div class="card">
     {% set lang = get_locale %}
-    {% set flag_src = '/static/img/flags/sl.png' if lang == 'sl' else '/static/img/flags/en.png' %}
+    {% set flag_src = '/static/img/flags/sl.svg' if lang == 'sl' else '/static/img/flags/en.svg' %}
     <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
       <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
     </button>
