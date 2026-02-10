@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from urllib.parse import quote
 import os
+from babel.support import Translations
+from jinja2 import pass_context
 
 import engine_web as engine
 
@@ -20,6 +22,9 @@ FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "true").lower() in {"
 IG_USERNAME = "bonibuddy"
 LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
 BUCKET_ORDER = {"now": 0, "30": 1, "60": 2}
+LOCALES_DIR = BASE_DIR / "locales"
+SUPPORTED_LOCALES = {"sl", "en"}
+DEFAULT_LOCALE = "sl"
 
 
 def compute_time_windows(now: datetime | None = None) -> dict:
@@ -64,6 +69,41 @@ def _build_feed_items(now: datetime | None = None) -> list[dict]:
         )
     )
     return rows
+
+
+def resolve_locale(request: Request) -> str:
+    """Decide locale from cookie (lang) with fallback to default."""
+    raw = (request.cookies.get("lang") or "").lower().strip()
+    if raw in SUPPORTED_LOCALES:
+        return raw
+    return DEFAULT_LOCALE
+
+
+def get_translations(locale: str) -> Translations:
+    """Load compiled translations for given locale; fallback to NullTranslations."""
+    try:
+        return Translations.load(str(LOCALES_DIR), locales=locale, domain="messages")
+    except Exception:
+        return Translations()
+
+
+def render_template(request: Request, template_name: str, context: dict):
+    """Add i18n helpers to template context and render."""
+    locale = resolve_locale(request)
+    translations = get_translations(locale)
+    context_with_i18n = {
+        "request": request,
+        "_": translations.gettext,
+        "get_locale": locale,
+        **context,
+    }
+    return templates.TemplateResponse(template_name, context_with_i18n)
+
+
+def gettext_for(request: Request):
+    """Return gettext function bound to the request locale."""
+    locale = resolve_locale(request)
+    return get_translations(locale).gettext
 
 def _get_env(name: str) -> str:
     v = os.getenv(name, "").strip()
@@ -210,10 +250,10 @@ def index(request: Request):
         cookie_uid = request.cookies.get("bb_uid")
         active_plan = _get_active_plan(cookie_uid)
 
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
             {
-                "request": request,
                 "feature_waiting_board": True,
                 "total_waiting": total_waiting,
                 "rows": rows,
@@ -224,10 +264,10 @@ def index(request: Request):
                 "time_windows": compute_time_windows(),
             },
         )
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "index.html",
         {
-            "request": request,
             "locations": LOCATIONS_BY_CITY["ljubljana"],
             "feature_waiting_board": False,
             "ig_username": IG_USERNAME,
@@ -255,10 +295,10 @@ def choose(request: Request):
         items.append({"restaurant": r, "total_waiting": total})
     items.sort(key=lambda x: (-x["total_waiting"], x["restaurant"].name.lower()))
 
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "choose.html",
         {
-            "request": request,
             "feature_waiting_board": True,
             "restaurants_with_counts": items,
             "query": q_raw,
@@ -274,10 +314,10 @@ def feed(request: Request):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
     items = _build_feed_items()
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "feed.html",
         {
-            "request": request,
             "items": items,
             "bucket_order": BUCKET_ORDER,
             "time_windows": compute_time_windows(),
@@ -307,51 +347,88 @@ def go(
     instagram_username: str = Form(None),
     consent: str = Form(None),
 ):
+    _ = gettext_for(request)
     if FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
     if consent != "yes":
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "locations": LOCATIONS_BY_CITY["ljubljana"],
-            "feature_waiting_board": False,
-            "error": "Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."
-        })
+        return render_template(
+            request,
+            "index.html",
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."),
+            },
+        )
 
     if city not in LOCATIONS_BY_CITY:
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
-            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Neveljavno mesto."},
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Neveljavno mesto."),
+            },
         )
 
     allowed_locations = LOCATIONS_BY_CITY[city]
 
     if location not in allowed_locations:
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
-            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Neveljavna lokacija."},
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Neveljavna lokacija."),
+            },
         )
 
     if time_bucket not in {"soon", "today"}:
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
-            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Neveljavna izbira časa."},
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Neveljavna izbira časa."),
+            },
         )
 
     if match_pref not in {"any", "female", "male"}:
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
-            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Neveljavna izbira preference."},
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Neveljavna izbira preference."),
+            },
         )
 
     if gender not in {"female", "male"}:
-        return templates.TemplateResponse(
+        return render_template(
+            request,
             "index.html",
-            {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Neveljavna izbira spola."},
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Neveljavna izbira spola."),
+            },
         )
 
     handle = normalize_instagram(instagram or instagram_username)
     if not handle:
-        return templates.TemplateResponse("index.html", {"request": request, "locations": LOCATIONS_BY_CITY["ljubljana"], "feature_waiting_board": False, "error": "Vpiši veljavno Instagram uporabniško ime."})
+        return render_template(
+            request,
+            "index.html",
+            {
+                "locations": LOCATIONS_BY_CITY["ljubljana"],
+                "feature_waiting_board": False,
+                "error": _("Vpiši veljavno Instagram uporabniško ime."),
+            },
+        )
 
     # Interno še vedno uporabljamo datetime za shranjevanje; UI prikazuje samo bucket (kmalu/danes).
     when = datetime.now()
@@ -367,24 +444,30 @@ def go(
     )
 
     if res["status"] == "matched":
-        return templates.TemplateResponse("matched.html", {
-            "request": request,
-            "location": LOCATION_LABELS.get(location, location),
-            "match_instagram": res["other_instagram"],
-            "city": city,
-            "time_bucket": time_bucket,
-        })
+        return render_template(
+            request,
+            "matched.html",
+            {
+                "location": LOCATION_LABELS.get(location, location),
+                "match_instagram": res["other_instagram"],
+                "city": city,
+                "time_bucket": time_bucket,
+            },
+        )
 
     # waiting
-    return templates.TemplateResponse("waiting.html", {
-        "request": request,
-        "rid": res["rid"],
-        "location": LOCATION_LABELS.get(location, location),
-        "city": city,
-        "time_bucket": time_bucket,
-        "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),
-        "feature_waiting_board": False,
-    })
+    return render_template(
+        request,
+        "waiting.html",
+        {
+            "rid": res["rid"],
+            "location": LOCATION_LABELS.get(location, location),
+            "city": city,
+            "time_bucket": time_bucket,
+            "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),
+            "feature_waiting_board": False,
+        },
+    )
 
 @app.get("/status/{rid}")
 def status(rid: str):
@@ -413,10 +496,10 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
     selected_bucket = user_bucket or (pref_time_bucket if pref_time_bucket in {"now", "30", "60"} else "now")
     cookie_uid = request.cookies.get("bb_uid") or user_id
     active_plan = _get_active_plan(cookie_uid)
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "waiting.html",
         {
-            "request": request,
             "feature_waiting_board": True,
             "restaurant_id": restaurant_id,
             "restaurant": restaurant,
@@ -474,10 +557,10 @@ def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | N
     copy_message_for_dm = f"Hej! Vidim na BoniBuddy, da greš jest v {restaurant.name} {bucket_label}. A greva skupaj? 😊"
     copy_invite_message = f"Greš na bone? Grem v {restaurant.name} {bucket_label}. Pridruži se: {share_url}"
 
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "done.html",
         {
-            "request": request,
             "restaurant": restaurant,
             "bucket": bucket,
             "bucket_label": bucket_label,
@@ -578,10 +661,10 @@ def waiting_new(request: Request, restaurant_id: str | None = None, loc: str | N
         loc_label = engine.LOCATION_LABELS.get(restaurant.location_id, restaurant.location_id)
     elif loc:
         loc_label = engine.LOCATION_LABELS.get(loc, loc)
-    return templates.TemplateResponse(
+    return render_template(
+        request,
         "new_waiting.html",
         {
-            "request": request,
             "restaurant": restaurant,
             "loc_label": loc_label,
         },

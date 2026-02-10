@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
   <title>BoniBuddy • Dodaj plan</title>
@@ -47,15 +47,15 @@
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Dodaj svoj plan</h1>
-    <div class="muted">Dodaj svoj načrt (prihaja). Trenutno pripravljamo obrazec.</div>
+  <div class="card" style="position:relative;">
+    <h1>{{ _("Dodaj svoj plan") }}</h1>
+    <div class="muted">{{ _("Dodaj svoj načrt (prihaja). Trenutno pripravljamo obrazec.") }}</div>
     {% if restaurant %}
-      <div class="muted">Izbrana menza: <strong>{{ restaurant.name }}</strong></div>
+      <div class="muted">{{ _("Izbrana menza:") }} <strong>{{ restaurant.name }}</strong></div>
     {% elif loc_label %}
-      <div class="muted">Izbrana lokacija: <strong>{{ loc_label }}</strong></div>
+      <div class="muted">{{ _("Izbrana lokacija:") }} <strong>{{ loc_label }}</strong></div>
     {% endif %}
-    <a class="btn" href="/">Nazaj</a>
+    <a class="btn" href="/">{{ _("Nazaj") }}</a>
   </div>
 </body>
 </html>

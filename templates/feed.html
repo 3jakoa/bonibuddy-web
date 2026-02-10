@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • Feed</title>
+  <title>{{ _("BoniBuddy • Feed") }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -55,17 +55,17 @@
   {% include "_ga.html" %}
 </head>
 <body>
-  <div class="card">
-    <h1>Kdo gre kam?</h1>
+  <div class="card" style="position:relative;">
+    <h1>{{ _("Kdo gre kam?") }}</h1>
     <div id="status" class="status"></div>
     <div id="list" class="list"></div>
-    <div id="empty" class="muted" style="display:none;">Trenutno ni aktivnih kartic.</div>
-    <a href="/" class="muted" style="font-size:12px; text-decoration:none;">↩ Nazaj</a>
+    <div id="empty" class="muted" style="display:none;">{{ _("Trenutno ni aktivnih kartic.") }}</div>
+    <a href="/" class="muted" style="font-size:12px; text-decoration:none;">↩ {{ _("Nazaj") }}</a>
   </div>
 
 <script>
   const INITIAL_ITEMS = {{ items | tojson }};
-  const bucketLabels = { now: 'Zdaj', 30: '+30', 60: '+60' };
+  const bucketLabels = { now: '{{ _("Zdaj") }}', 30: '+30', 60: '+60' };
 
   const listEl = document.getElementById('list');
   const emptyEl = document.getElementById('empty');

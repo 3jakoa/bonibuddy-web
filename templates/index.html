@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy</title>
+  <title>{{ _("BoniBuddy") }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F6FBFE">
   <link rel="manifest" href="/static/manifest.webmanifest">
@@ -249,16 +249,43 @@
     .live-feed-icon:hover, .live-feed-icon:focus{background: var(--accent); color:#ffffff; box-shadow: 0 8px 18px rgba(0,166,246,0.25); outline:none;}
     .live-feed-icon:active{transform: scale(0.97); background:#008ed5; color:#ffffff;}
     .live-feed-icon svg{width:18px; height:18px; display:block; fill:currentColor;}
+    .lang-toggle{
+      position:absolute;
+      top:12px; left:12px;
+      width:40px; height:40px;
+      border-radius:50%;
+      border:1.25px solid var(--accent);
+      overflow:hidden;
+      padding:0;
+      background: #ffffff;
+      cursor:pointer;
+      box-shadow: 0 8px 18px rgba(0,166,246,0.12);
+      display:flex; align-items:center; justify-content:center;
+      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .lang-toggle:hover, .lang-toggle:focus{
+      background: rgba(0,166,246,0.08);
+      box-shadow: 0 10px 20px rgba(0,166,246,0.16);
+      outline:none;
+    }
+    .lang-toggle:active{transform: scale(0.97);}
+    .lang-toggle img{width:100%; height:100%; object-fit:cover; display:block;}
     @media (max-width: 480px){
       .live-feed-icon{width:36px; height:36px; top:12px; right:12px;}
+      .lang-toggle{width:36px; height:36px; top:10px; left:10px;}
     }
   </style>
   {% include "_ga.html" %}
 </head>
 <body>
   <div class="card">
+    {% set lang = get_locale %}
+    {% set flag_src = '/static/img/flags/sl.svg' if lang == 'sl' else '/static/img/flags/en.svg' %}
+    <button type="button" class="lang-toggle" aria-label="{{ _('Preklopi jezik') }}" data-current-lang="{{ lang }}">
+      <img src="{{ flag_src }}" alt="{{ _('Jezik') }}">
+    </button>
     {% if feature_waiting_board %}
-      <a class="live-feed-icon" href="/feed" aria-label="Live feed" title="Live feed">
+      <a class="live-feed-icon" href="/feed" aria-label="{{ _('Live feed') }}" title="{{ _('Live feed') }}">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
           <rect width="256" height="256" fill="none"/>
           <path d="M96,192a32,32,0,0,0,64,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
@@ -297,13 +324,13 @@
           </defs>
         </svg>
       </div>
-      <h1 style="margin-bottom:6px;">Greš na bone?</h1>
+      <h1 style="margin-bottom:6px;">{{ _("Greš na bone?") }}</h1>
       {% include "_active_plan.html" %}
 
-      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
+      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">{{ _("Kdaj greš") }}</div>
       <div class="chip-row chip-row--time">
         <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">
-          <span class="chip__primary">Zdaj</span>
+          <span class="chip__primary">{{ _("Zdaj") }}</span>
           <span class="chip__secondary">{{ time_windows['now'].label }}</span>
         </a>
         <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">
@@ -316,12 +343,12 @@
         </a>
       </div>
 
-      <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">Poišči kam greš</div>
+      <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">{{ _("Poišči kam greš") }}</div>
       <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
         <input type="hidden" name="t" value="{{ selected_t }}">
-        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
+        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="{{ _('Išči po imenu (Ljubljana)') }}" autocomplete="off">
         {% if query %}
-          <button type="button" class="search-clear" aria-label="Počisti iskanje"
+          <button type="button" class="search-clear" aria-label="{{ _('Počisti iskanje') }}"
                   onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
         {% endif %}
       </form>
@@ -340,12 +367,12 @@
                   {% endif %}
                 </div>
                 <div class="badge {% if is_active %}badge--active{% endif %}">
-                  {% if item.count == 1 %}1 gre{% elif item.count == 0 %}0 gre{% else %}{{ item.count }} gredo{% endif %}
+                  {% if item.count == 1 %}{{ _("1 gre") }}{% elif item.count == 0 %}{{ _("0 gre") }}{% else %}{{ _("%(count)s gredo", count=item.count) }}{% endif %}
                 </div>
               </a>
             {% endfor %}
           </div>
-          <div id="noResults" class="muted" style="display:none; margin-top:8px;">Ni zadetkov.</div>
+          <div id="noResults" class="muted" style="display:none; margin-top:8px;">{{ _("Ni zadetkov.") }}</div>
         {% endif %}
 
       </div>
@@ -382,20 +409,32 @@
           </defs>
         </svg>
       </div>
-      <h1 style="margin-bottom:6px;">Greš na bone</h1>
-      <a class="chip chip--active" href="/">Nazaj na začetek</a>
+      <h1 style="margin-bottom:6px;">{{ _("Greš na bone") }}</h1>
+      <a class="chip chip--active" href="/">{{ _("Nazaj na začetek") }}</a>
     {% endif %}
     <div class="foot">
       <a class="ig-link" data-ig-link target="_blank" rel="noopener noreferrer">
         <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
           <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
         </svg>
-        <span>Follow us on Instagram</span>
+        <span>{{ _("Follow us on Instagram") }}</span>
       </a>
     </div>
   </div>
 <script>
   const INSTAGRAM_URL = 'https://www.instagram.com/boni_buddy/';
+
+  // Language toggle: store cookie and reload
+  (function() {
+    const btn = document.querySelector('.lang-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const current = btn.dataset.currentLang === 'en' ? 'en' : 'sl';
+      const next = current === 'sl' ? 'en' : 'sl';
+      document.cookie = `lang=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+      window.location.reload();
+    });
+  })();
 
   // Service worker (best-effort)
   if ('serviceWorker' in navigator) {
