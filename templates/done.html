@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="sl">
+<html lang="{{ get_locale }}">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • {{ 'Zaključeno' if joined_existing else 'Plan objavljen' }}</title>
+  <title>BoniBuddy • {{ _('Zaključeno') if joined_existing else _('Plan objavljen') }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -122,9 +122,10 @@
         {% if joined_existing %}
           <h1>Dogovorjeno ✅</h1>
           <div class="body-text">Termin: {{ window_label }}</div>
+          <h1>{{ _("Dogovorjeno ✅") }}</h1>
 
           <div class="cta-stack">
-            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">{{ _("Kontaktiraj na Instagramu") }}</a>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
@@ -133,14 +134,14 @@
             </form>
           </div>
           <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
+            <a class="link" href="/">{{ _("Nazaj na pregled") }}</a>
           </div>
         {% else %}
           <h1>Plan objavljen 🎉</h1>
           <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo. Termin: {{ window_label }}</div>
 
           <div class="cta-stack">
-            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
+            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">{{ _("Deli povabilo") }}</button>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
@@ -149,7 +150,7 @@
             </form>
           </div>
           <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
+            <a class="link" href="/">{{ _("Nazaj na pregled") }}</a>
           </div>
         {% endif %}
       </div>
