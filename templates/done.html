@@ -121,13 +121,14 @@
         </div>
         {% if joined_existing %}
           <h1>Dogovorjeno ✅</h1>
+          <div class="body-text">Termin: {{ window_label }}</div>
 
           <div class="cta-stack">
             <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-              <input type="hidden" name="time_bucket" value="{{ bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
+              <input type="hidden" name="go_time" value="{{ go_time }}">
               <button class="btn-secondary" type="submit">Prekliči plan</button>
             </form>
           </div>
@@ -136,14 +137,14 @@
           </div>
         {% else %}
           <h1>Plan objavljen 🎉</h1>
-          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo.</div>
+          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo. Termin: {{ window_label }}</div>
 
           <div class="cta-stack">
             <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-              <input type="hidden" name="time_bucket" value="{{ bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
+              <input type="hidden" name="go_time" value="{{ go_time }}">
               <button class="btn-secondary" type="submit">Prekliči plan</button>
             </form>
           </div>
@@ -177,16 +178,16 @@
       }
 
       btn.addEventListener('click', async () => {
-        try { window.gtag && gtag('event', 'share_invite_click', { restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
+        try { window.gtag && gtag('event', 'share_invite_click', { restaurant_id: '{{ restaurant.id }}', go_time: '{{ go_time }}' }); } catch(e) {}
         try{
           await shareNative();
           btn.textContent = 'Poslano ✅';
-          try { window.gtag && gtag('event', 'share_invite_sent', { method: 'native', restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
+          try { window.gtag && gtag('event', 'share_invite_sent', { method: 'native', restaurant_id: '{{ restaurant.id }}', go_time: '{{ go_time }}' }); } catch(e) {}
         }catch(err){
           try{
             await copyFallback();
             btn.textContent = 'Povezava kopirana';
-            try { window.gtag && gtag('event', 'share_invite_sent', { method: 'copy', restaurant_id: '{{ restaurant.id }}', time_bucket: '{{ bucket }}' }); } catch(e) {}
+            try { window.gtag && gtag('event', 'share_invite_sent', { method: 'copy', restaurant_id: '{{ restaurant.id }}', go_time: '{{ go_time }}' }); } catch(e) {}
           }catch(_err){
             btn.textContent = 'Deljenje ni uspelo';
           }

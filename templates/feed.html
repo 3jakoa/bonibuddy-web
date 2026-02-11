@@ -65,7 +65,6 @@
 
 <script>
   const INITIAL_ITEMS = {{ items | tojson }};
-  const bucketLabels = { now: 'Zdaj', 30: '+30', 60: '+60' };
 
   const listEl = document.getElementById('list');
   const emptyEl = document.getElementById('empty');
@@ -81,12 +80,12 @@
     items.forEach(item => {
       const a = document.createElement('a');
       a.className = 'rest-row rest-row--active';
-      a.href = `/waiting/${item.restaurant_id}?t=${item.bucket}&join=1`;
+      a.href = `/waiting/${item.restaurant_id}?go_time=${encodeURIComponent(item.go_time)}&join=1`;
 
       const info = document.createElement('div');
       info.className = 'rest-info';
       info.innerHTML = `<div class="rest-name">${item.restaurant_name}</div>` +
-                       `<div class="rest-sub">${bucketLabels[item.bucket] || item.bucket} • ${item.window_label || ''}</div>`;
+                       `<div class="rest-sub">${item.window_label || ''}</div>`;
 
       const badge = document.createElement('div');
       badge.className = 'badge badge--active';

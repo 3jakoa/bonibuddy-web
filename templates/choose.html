@@ -71,10 +71,10 @@
     {% include "_active_plan.html" %}
     <div class="header">
       <div class="header-title">Kam greš jest?</div>
-      <div class="rest-sub">Izbrano: {% if time_bucket == 'now' %}Grem zdaj{% elif time_bucket == '30' %}Grem čez 30 min{% else %}Grem čez 60 min{% endif %}</div>
+      <div class="rest-sub">Izbrano: {{ selected_window_label }}</div>
     </div>
     <form class="search-bar" method="get" action="/choose">
-      <input type="hidden" name="t" value="{{ time_bucket }}">
+      <input type="hidden" name="go_time" value="{{ selected_go_time }}">
       <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo po imenu" autocomplete="off">
       {% if query %}
         <button type="button" class="search-clear" aria-label="Počisti iskanje"
@@ -86,7 +86,7 @@
       {% if restaurants_with_counts %}
         {% for item in restaurants_with_counts %}
           <div class="rest-row">
-            <a href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}">
+            <a href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}">
               <div class="rest-name">{{ item.restaurant.name }}</div>
               <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
             </a>
@@ -95,7 +95,7 @@
               <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
                 {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
               </div>
-              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">Join</a>
+              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1">Join</a>
             </div>
           </div>
         {% endfor %}

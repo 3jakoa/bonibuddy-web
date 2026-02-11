@@ -4,9 +4,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 import os
 
 import engine_web as engine
@@ -19,50 +19,144 @@ app = FastAPI()
 FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "true").lower() in {"1", "true", "yes"}
 IG_USERNAME = "bonibuddy"
 LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
-BUCKET_ORDER = {"now": 0, "30": 1, "60": 2}
+GO_TIME_STEP_MINUTES = 5
+ACTIVE_WINDOW_MINUTES = 30
+LEGACY_T_OFFSETS = {"now": 0, "30": 30, "60": 60}
 
 
-def compute_time_windows(now: datetime | None = None) -> dict:
-    """Return half-hour windows starting at now for labels now/30/60."""
-    base = (now.astimezone(LOCAL_TZ) if now else datetime.now(LOCAL_TZ))
-    windows = {}
-    for key, offset in [("now", 0), ("30", 30), ("60", 60)]:
-        start = base + timedelta(minutes=offset)
-        end = start + timedelta(minutes=30)
-        windows[key] = {
-            "start": start,
-            "end": end,
-            "label": f"{start:%H:%M}–{end:%H:%M}",
-        }
-    return windows
+def _now_local() -> datetime:
+    return datetime.now(LOCAL_TZ)
+
+
+def _to_local(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc).astimezone(LOCAL_TZ)
+    return value.astimezone(LOCAL_TZ)
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat((value or "").strip())
+    except Exception:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _format_go_time(value: datetime) -> str:
+    return _to_local(value).strftime("%H:%M")
+
+
+def _window_label_for(value: datetime) -> str:
+    start = _to_local(value)
+    end = start + timedelta(minutes=ACTIVE_WINDOW_MINUTES)
+    return f"{start:%H:%M}–{end:%H:%M}"
+
+
+def _default_go_time(now_local: datetime | None = None) -> datetime:
+    now_local = now_local or _now_local()
+    rounded = now_local.replace(second=0, microsecond=0)
+    remainder = rounded.minute % GO_TIME_STEP_MINUTES
+    if remainder:
+        rounded += timedelta(minutes=GO_TIME_STEP_MINUTES - remainder)
+    if rounded.date() != now_local.date():
+        rounded = now_local.replace(second=0, microsecond=0)
+    return rounded
+
+
+def _parse_go_time(raw: str, now_local: datetime | None = None) -> datetime | None:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    now_local = now_local or _now_local()
+    try:
+        parsed = datetime.strptime(value, "%H:%M")
+    except ValueError:
+        return None
+    return now_local.replace(hour=parsed.hour, minute=parsed.minute, second=0, microsecond=0)
+
+
+def _legacy_t_to_go_time(raw_t: str | None, now_local: datetime | None = None) -> str | None:
+    t = (raw_t or "").strip().lower()
+    if t not in LEGACY_T_OFFSETS:
+        return None
+    now_local = now_local or _now_local()
+    return _format_go_time(now_local + timedelta(minutes=LEGACY_T_OFFSETS[t]))
+
+
+def _resolve_selected_go_time(
+    *,
+    go_time_raw: str | None,
+    legacy_t_raw: str | None = None,
+    allow_past: bool = False,
+    default_to_now: bool = True,
+) -> tuple[datetime | None, str | None, bool, str | None]:
+    now_local = _now_local()
+    source_legacy = False
+    resolved = (go_time_raw or "").strip()
+    if not resolved and legacy_t_raw:
+        mapped = _legacy_t_to_go_time(legacy_t_raw, now_local=now_local)
+        if not mapped:
+            return None, None, False, "invalid_time"
+        resolved = mapped
+        source_legacy = True
+
+    if not resolved:
+        if not default_to_now:
+            return None, None, source_legacy, None
+        selected = _default_go_time(now_local=now_local)
+        return selected, _format_go_time(selected), source_legacy, None
+
+    selected = _parse_go_time(resolved, now_local=now_local)
+    if not selected:
+        return None, None, source_legacy, "invalid_time"
+
+    floor_now = now_local.replace(second=0, microsecond=0)
+    if not allow_past and selected < floor_now:
+        return None, _format_go_time(_default_go_time(now_local=now_local)), source_legacy, "past_time"
+
+    return selected, _format_go_time(selected), source_legacy, None
+
+
+def _with_query(path: str, **params: str | None) -> str:
+    clean = {k: v for k, v in params.items() if v is not None and v != ""}
+    if not clean:
+        return path
+    return f"{path}?{urlencode(clean)}"
 
 
 def _build_feed_items(now: datetime | None = None) -> list[dict]:
-    """Collect active slots (count>0) across all restaurants/buckets."""
-    windows = compute_time_windows(now=now)
+    """Collect active cards (count>0) across all restaurants/windows."""
     rows: list[dict] = []
     for r in engine.list_restaurants():
         board = engine.get_waiting_board(r.id)
-        for bucket, info in (board or {}).items():
+        for info in (board or {}).values():
             count = int(info.get("count") or 0)
             if count <= 0:
+                continue
+            target_time = _parse_iso_datetime(info.get("target_time_iso") or "")
+            if not target_time:
                 continue
             rows.append(
                 {
                     "restaurant_id": r.id,
                     "restaurant_name": r.name,
-                    "bucket": bucket,
+                    "go_time": _format_go_time(target_time),
                     "count": count,
-                    "window_label": windows.get(bucket, {}).get("label", ""),
+                    "window_label": _window_label_for(target_time),
+                    "sort_time": _to_local(target_time),
                 }
             )
     rows.sort(
         key=lambda x: (
-            BUCKET_ORDER.get(x["bucket"], 99),
+            x["sort_time"],
             -x["count"],
             x["restaurant_name"].lower(),
         )
     )
+    for row in rows:
+        row.pop("sort_time", None)
     return rows
 
 def _get_env(name: str) -> str:
@@ -147,11 +241,28 @@ def _get_active_plan(user_id: str | None) -> dict | None:
     if not user_id:
         return None
     uid_norm = normalize_instagram(user_id).lower()
-    for r in engine.list_restaurants():
-        bucket = engine.get_user_bucket(r.id, uid_norm)
-        if bucket:
-            return {"restaurant": r, "bucket": bucket}
-    return None
+    plan = engine.get_user_membership(uid_norm)
+    if not plan:
+        return None
+    restaurant_id = (plan.get("restaurant_id") or "").strip().lower()
+    if not restaurant_id:
+        return None
+    restaurant = engine.get_restaurant(restaurant_id)
+    if not restaurant:
+        return None
+    target_time = plan.get("target_time")
+    if not isinstance(target_time, datetime):
+        target_time = _parse_iso_datetime(plan.get("target_time_iso") or "")
+    if not target_time:
+        return None
+    target_local = _to_local(target_time)
+    window_end = target_local + timedelta(minutes=ACTIVE_WINDOW_MINUTES)
+    return {
+        "restaurant": restaurant,
+        "go_time": f"{target_local:%H:%M}",
+        "window_label": f"{target_local:%H:%M}–{window_end:%H:%M}",
+        "expires_label": f"do {window_end:%H:%M}",
+    }
 
 # --- PWA convenience routes (some browsers request these at the root) ---
 @app.get("/manifest.webmanifest")
@@ -185,23 +296,40 @@ def pwa_apple_touch_icon_120_precomposed():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     if FEATURE_WAITING_BOARD:
-        t = (request.query_params.get("t") or "now").strip().lower()
-        if t not in {"now", "30", "60"}:
-            return RedirectResponse(url="/?t=now", status_code=303)
-
         query_raw = (request.query_params.get("q") or "").strip()
+        selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
+            go_time_raw=request.query_params.get("go_time"),
+            legacy_t_raw=request.query_params.get("t"),
+            allow_past=False,
+            default_to_now=True,
+        )
+        msg = (request.query_params.get("msg") or "").strip()
+        if err:
+            if err == "past_time":
+                msg = "Izberi prihodnji čas odhoda."
+            elif err == "invalid_time":
+                msg = "Neveljaven čas. Uporabi obliko HH:MM."
+            return RedirectResponse(
+                url=_with_query("/", go_time=selected_go_time, q=query_raw or None, msg=msg or None),
+                status_code=303,
+            )
+        if mapped_legacy:
+            return RedirectResponse(
+                url=_with_query("/", go_time=selected_go_time, q=query_raw or None, msg=msg or None),
+                status_code=303,
+            )
 
         candidate_restaurants = list(engine.list_restaurants(search=query_raw))
         rows = []
         total_waiting = 0
         for r in candidate_restaurants:
-            cnt = engine.get_waiting_count(r.id, t)
+            cnt = engine.get_waiting_count(r.id, selected_time)
             total_waiting += cnt
             rows.append(
                 {
                     "restaurant": r,
                     "count": cnt,
-                    "members": engine.get_waiting_members(r.id, t),
+                    "members": engine.get_waiting_members(r.id, selected_time),
                 }
             )
 
@@ -217,11 +345,12 @@ def index(request: Request):
                 "feature_waiting_board": True,
                 "total_waiting": total_waiting,
                 "rows": rows,
-                "selected_t": t,
+                "selected_go_time": selected_go_time,
+                "selected_window_label": _window_label_for(selected_time),
                 "query": query_raw,
+                "msg": msg,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
-                "time_windows": compute_time_windows(),
             },
         )
     return templates.TemplateResponse(
@@ -231,7 +360,6 @@ def index(request: Request):
             "locations": LOCATIONS_BY_CITY["ljubljana"],
             "feature_waiting_board": False,
             "ig_username": IG_USERNAME,
-            "time_windows": compute_time_windows(),
         },
     )
 
@@ -240,11 +368,24 @@ def index(request: Request):
 def choose(request: Request):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    t = (request.query_params.get("t") or "").strip().lower()
-    if t not in {"now", "30", "60"}:
-        return RedirectResponse(url="/", status_code=303)
-
+    selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
+        go_time_raw=request.query_params.get("go_time"),
+        legacy_t_raw=request.query_params.get("t"),
+        allow_past=False,
+        default_to_now=True,
+    )
     q_raw = request.query_params.get("q", "") or ""
+    if err:
+        return RedirectResponse(
+            url=_with_query("/choose", go_time=selected_go_time, q=q_raw.strip() or None),
+            status_code=303,
+        )
+    if mapped_legacy:
+        return RedirectResponse(
+            url=_with_query("/choose", go_time=selected_go_time, q=q_raw.strip() or None),
+            status_code=303,
+        )
+
     q = q_raw.strip().lower()
     restaurants = engine.list_restaurants(search=q_raw.strip())
     items = []
@@ -262,7 +403,8 @@ def choose(request: Request):
             "feature_waiting_board": True,
             "restaurants_with_counts": items,
             "query": q_raw,
-            "time_bucket": t,
+            "selected_go_time": selected_go_time,
+            "selected_window_label": _window_label_for(selected_time),
             "ig_username": IG_USERNAME,
             "active_plan": _get_active_plan(request.cookies.get("bb_uid")),
         },
@@ -279,8 +421,6 @@ def feed(request: Request):
         {
             "request": request,
             "items": items,
-            "bucket_order": BUCKET_ORDER,
-            "time_windows": compute_time_windows(),
         },
     )
 
@@ -404,14 +544,72 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
     restaurant = engine.get_restaurant(restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
-    board = engine.get_waiting_board(restaurant_id) or {}
     city_label = (getattr(restaurant, "city", "") or "").title()
     loc_label = restaurant.address or city_label or restaurant.location_id or restaurant.id
-    user_bucket = engine.get_user_bucket(restaurant_id, user_id) if user_id else None
+    cookie_uid = (request.cookies.get("bb_uid") or user_id or "").strip()
+    membership = engine.get_user_membership(cookie_uid) if cookie_uid else None
+    user_go_time = None
+    restaurant_id_norm = (restaurant_id or "").strip().lower()
+    if membership and membership.get("restaurant_id") == restaurant_id_norm:
+        target = membership.get("target_time")
+        if isinstance(target, datetime):
+            user_go_time = _format_go_time(target)
+        else:
+            parsed_target = _parse_iso_datetime(membership.get("target_time_iso") or "")
+            if parsed_target:
+                user_go_time = _format_go_time(parsed_target)
+
+    go_time_param = request.query_params.get("go_time")
+    legacy_t = request.query_params.get("t")
+    if not go_time_param and user_go_time:
+        selected_time = _parse_go_time(user_go_time)
+        selected_go_time = user_go_time
+        mapped_legacy = False
+        err = None
+    else:
+        selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
+            go_time_raw=go_time_param,
+            legacy_t_raw=legacy_t,
+            allow_past=False,
+            default_to_now=True,
+        )
+    if not selected_time or not selected_go_time:
+        selected_time = _default_go_time()
+        selected_go_time = _format_go_time(selected_time)
+
     join_focus = request.query_params.get("join")
-    pref_time_bucket = request.query_params.get("t")
-    selected_bucket = user_bucket or (pref_time_bucket if pref_time_bucket in {"now", "30", "60"} else "now")
-    cookie_uid = request.cookies.get("bb_uid") or user_id
+    msg = (request.query_params.get("msg") or "").strip()
+    ref = (request.query_params.get("ref") or "").strip()
+    if err:
+        if err == "past_time":
+            msg = "Izberi prihodnji čas odhoda."
+        elif err == "invalid_time":
+            msg = "Neveljaven čas. Uporabi obliko HH:MM."
+        return RedirectResponse(
+            url=_with_query(
+                f"/waiting/{restaurant_id}",
+                go_time=selected_go_time,
+                join="1" if join_focus else None,
+                ref=ref or None,
+                msg=msg or None,
+                user_id=user_id or None,
+            ),
+            status_code=303,
+        )
+    if mapped_legacy:
+        return RedirectResponse(
+            url=_with_query(
+                f"/waiting/{restaurant_id}",
+                go_time=selected_go_time,
+                join="1" if join_focus else None,
+                ref=ref or None,
+                msg=msg or None,
+                user_id=user_id or None,
+            ),
+            status_code=303,
+        )
+
+    board = engine.get_waiting_board(restaurant_id, selected_time=selected_time) or {}
     active_plan = _get_active_plan(cookie_uid)
     return templates.TemplateResponse(
         "waiting.html",
@@ -422,44 +620,90 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
             "restaurant": restaurant,
             "location_label": loc_label,
             "board": board,
-            "user_id": user_id or "",
-            "user_bucket": user_bucket,
-            "msg": request.query_params.get("msg", ""),
+            "user_id": cookie_uid or "",
+            "user_go_time": user_go_time,
+            "msg": msg,
             "join_focus": bool(join_focus),
-            "selected_bucket": selected_bucket,
+            "selected_go_time": selected_go_time,
+            "selected_window_label": _window_label_for(selected_time),
+            "selected_count": int(board.get("count") or 0),
+            "selected_members": board.get("members") or [],
             "active_plan": active_plan,
-            "time_windows": compute_time_windows(),
         },
     )
 
 @app.get("/api/waiting_board/{restaurant_id}")
-def waiting_board_api(restaurant_id: str):
+def waiting_board_api(request: Request, restaurant_id: str):
     """Return live waiting board counts for polling on the client."""
     if not FEATURE_WAITING_BOARD:
         raise HTTPException(status_code=404)
     restaurant = engine.get_restaurant(restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
-    board = engine.get_waiting_board(restaurant_id) or {}
-    return board
+    go_time_raw = request.query_params.get("go_time")
+    if go_time_raw:
+        selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
+            go_time_raw=go_time_raw,
+            allow_past=True,
+            default_to_now=False,
+        )
+        if err or not selected_time or not selected_go_time:
+            raise HTTPException(status_code=400, detail="invalid_go_time")
+        board = engine.get_waiting_board(restaurant_id, selected_time=selected_time) or {}
+        return {
+            "go_time": selected_go_time,
+            "window_label": _window_label_for(selected_time),
+            "count": int(board.get("count") or 0),
+            "members": board.get("members") or [],
+        }
+
+    grouped = engine.get_waiting_board(restaurant_id) or {}
+    output = {}
+    for key, info in grouped.items():
+        target_dt = _parse_iso_datetime(info.get("target_time_iso") or "")
+        if not target_dt:
+            continue
+        output[key] = {
+            "go_time": _format_go_time(target_dt),
+            "window_label": _window_label_for(target_dt),
+            "count": int(info.get("count") or 0),
+            "members": info.get("members") or [],
+        }
+    return output
 
 
 @app.get("/done/{restaurant_id}", response_class=HTMLResponse)
-def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | None = None):
+def done_screen(
+    request: Request,
+    restaurant_id: str,
+    go_time: str | None = None,
+    t: str | None = None,
+    u: str | None = None,
+):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    bucket = (t or "now").strip().lower()
-    if bucket not in {"now", "30", "60"}:
-        return RedirectResponse(url=f"/done/{restaurant_id}?t=now&u={quote(u or '')}", status_code=303)
+    selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
+        go_time_raw=go_time,
+        legacy_t_raw=t,
+        allow_past=True,
+        default_to_now=True,
+    )
+    if not selected_time or not selected_go_time:
+        selected_time = _default_go_time()
+        selected_go_time = _format_go_time(selected_time)
+    if err:
+        return RedirectResponse(url=_with_query(f"/done/{restaurant_id}", go_time=selected_go_time, u=u or None), status_code=303)
+    if mapped_legacy:
+        return RedirectResponse(url=_with_query(f"/done/{restaurant_id}", go_time=selected_go_time, u=u or None), status_code=303)
     user = (u or request.cookies.get("bb_uid") or "").strip()
     if not user:
-        return RedirectResponse(url=f"/waiting/{restaurant_id}?t={bucket}", status_code=303)
+        return RedirectResponse(url=_with_query(f"/waiting/{restaurant_id}", go_time=selected_go_time), status_code=303)
 
     restaurant = engine.get_restaurant(restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
 
-    members = engine.get_waiting_members(restaurant_id, bucket)
+    members = engine.get_waiting_members(restaurant_id, selected_time)
     normalized_user = engine._normalize_instagram(user) if hasattr(engine, "_normalize_instagram") else user.lower()
     others = [m for m in members if (m or "").lower().lstrip("@") != normalized_user]
     created_param = request.query_params.get("created")
@@ -468,19 +712,26 @@ def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | N
     else:
         joined_existing = len(others) >= 1
     primary_other = others[0] if others else ""
-    bucket_label = {"now": "zdaj", "30": "čez 30 min", "60": "čez 60 min"}.get(bucket, bucket)
+    go_time_label = _format_go_time(selected_time)
+    window_label = _window_label_for(selected_time)
     instagram_url = f"https://instagram.com/{quote(primary_other)}" if primary_other else ""
-    share_url = f"/waiting/{restaurant_id}?t={bucket}&join=1&ref={quote(user)}"
-    copy_message_for_dm = f"Hej! Vidim na BoniBuddy, da greš jest v {restaurant.name} {bucket_label}. A greva skupaj? 😊"
-    copy_invite_message = f"Greš na bone? Grem v {restaurant.name} {bucket_label}. Pridruži se: {share_url}"
+    share_url = _with_query(
+        f"/waiting/{restaurant_id}",
+        go_time=selected_go_time,
+        join="1",
+        ref=user,
+    )
+    copy_message_for_dm = f"Hej! Vidim na BoniBuddy, da greš jest v {restaurant.name} ob {go_time_label}. A greva skupaj? 😊"
+    copy_invite_message = f"Greš na bone? Grem v {restaurant.name} ob {go_time_label}. Pridruži se: {share_url}"
 
     return templates.TemplateResponse(
         "done.html",
         {
             "request": request,
             "restaurant": restaurant,
-            "bucket": bucket,
-            "bucket_label": bucket_label,
+            "go_time": selected_go_time,
+            "go_time_label": go_time_label,
+            "window_label": window_label,
             "members": ["@" + m.lstrip("@") for m in members],
             "joined_existing": joined_existing,
             "primary_other": "@" + primary_other.lstrip("@") if primary_other else "",
@@ -498,7 +749,7 @@ def done_screen(request: Request, restaurant_id: str, t: str = "now", u: str | N
 def waiting_join(
     request: Request,
     restaurant_id: str = Form(...),
-    time_bucket: str = Form(...),
+    go_time: str = Form(...),
     user_id: str = Form(...),
     ref: str | None = Form(None),
 ):
@@ -507,17 +758,31 @@ def waiting_join(
     user_id = (user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing user_id")
+    selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
+        go_time_raw=go_time,
+        allow_past=False,
+        default_to_now=False,
+    )
+    if err or not selected_time or not selected_go_time:
+        msg = "Izberi prihodnji čas odhoda."
+        back = _with_query(f"/waiting/{restaurant_id}", go_time=go_time, msg=msg)
+        return RedirectResponse(url=back, status_code=303)
     existing_plan = engine.get_user_membership(user_id)
     if existing_plan and existing_plan.get("restaurant_id") != (restaurant_id or "").strip().lower():
         msg = "Imaš že aktiven plan. Najprej ga prekliči."
-        back = f"/waiting/{restaurant_id}?t={quote(time_bucket)}&msg={quote(msg)}"
+        back = _with_query(f"/waiting/{restaurant_id}", go_time=selected_go_time, msg=msg)
         return RedirectResponse(url=back, status_code=303)
-    res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, time_bucket=time_bucket, referrer=ref)
+    res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, target_time=selected_time, referrer=ref)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "join_failed"))
     prev_count = int(res.get("previous_count", 1))
     created_new = prev_count == 0
-    back = f"/done/{restaurant_id}?t={quote(time_bucket)}&u={quote(user_id)}&created={'1' if created_new else '0'}"
+    back = _with_query(
+        f"/done/{restaurant_id}",
+        go_time=selected_go_time,
+        u=user_id,
+        created="1" if created_new else "0",
+    )
     resp = RedirectResponse(url=back, status_code=303)
     resp.set_cookie(
         "bb_uid",
@@ -532,16 +797,21 @@ def waiting_join(
 def waiting_leave(
     request: Request,
     restaurant_id: str = Form(...),
-    time_bucket: str = Form(...),
     user_id: str = Form(...),
+    go_time: str | None = Form(None),
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
     user_id = (user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing user_id")
-    engine.leave_slot(user_id=user_id, restaurant_id=restaurant_id, time_bucket=time_bucket)
-    back = f"/waiting/{restaurant_id}?user_id={quote(user_id)}"
+    engine.leave_slot(user_id=user_id, restaurant_id=restaurant_id)
+    _, selected_go_time, _mapped_legacy, _err = _resolve_selected_go_time(
+        go_time_raw=go_time,
+        allow_past=True,
+        default_to_now=True,
+    )
+    back = _with_query(f"/waiting/{restaurant_id}", user_id=user_id, go_time=selected_go_time)
     return RedirectResponse(url=back, status_code=303)
 
 
@@ -549,7 +819,6 @@ def waiting_leave(
 def plan_cancel(
     request: Request,
     restaurant_id: str | None = Form(None),
-    time_bucket: str | None = Form(None),
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
@@ -557,14 +826,12 @@ def plan_cancel(
     if not user_id:
         return RedirectResponse(url="/", status_code=303)
     target_restaurant = restaurant_id
-    target_bucket = time_bucket
-    if not target_restaurant or not target_bucket:
+    if not target_restaurant:
         plan = _get_active_plan(user_id)
         if plan:
             target_restaurant = plan["restaurant"].id
-            target_bucket = plan["bucket"]
-    if target_restaurant and target_bucket:
-        engine.leave_slot(user_id=user_id, restaurant_id=target_restaurant, time_bucket=target_bucket)
+    if target_restaurant:
+        engine.leave_slot(user_id=user_id, restaurant_id=target_restaurant)
     return RedirectResponse(url="/", status_code=303)
 
 

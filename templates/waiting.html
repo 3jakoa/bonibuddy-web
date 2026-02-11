@@ -190,23 +190,15 @@
     .status{font-size:13px; color:var(--muted); margin-top:8px;}
     .pill{display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background: #ffffff; font-size:12px;}
     .badge{padding:6px 9px; border-radius:10px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; color:#05A5F7;}
-    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);} 
-    .slot-list{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      margin:24px 0 24px;
-      flex-shrink: 1;
-      min-height:0;
-      overflow-y:auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .slot-card{border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:12px; cursor:pointer; transition: border-color 0.2s ease, background 0.2s ease; box-shadow: none;} 
-    .slot-card.selected{border:2px solid var(--accent); background: #EAF7FD; box-shadow: none;} 
-    .slot-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:12px;}
-    .slot-left{display:flex; flex-direction:column; gap:4px; align-items:flex-start;}
-    .slot-label{font-weight:700;}
-  .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin:0;}
+    .badge--active{background: #05A5F7; border-color: #05A5F7; color:#ffffff; box-shadow: 0 3px 10px rgba(5,165,247,0.22);}
+    .time-picker-row{display:flex; gap:10px; margin:14px 0 8px;}
+    .time-picker-row input[type="time"]{width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px;}
+    .time-picker-row input[type="time"]:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
+    .window-card{border:1px solid rgba(0,166,246,0.18); background:#EAF7FD; border-radius:14px; padding:12px; margin:8px 0 14px;}
+    .window-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:12px;}
+    .window-title{font-weight:700;}
+    .window-members{font-size:13px; color:var(--muted);}
+    .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin:0;}
   </style>
   {% include "_ga.html" %}
 </head>
@@ -218,40 +210,34 @@
           {% include "_active_plan.html" %}
           <h1>📍 {{ restaurant.name }}</h1>
           {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
-          {% set tb_labels = {'now': 'Zdaj', '30': '+30 min', '60': '+60 min'} %}
 
           <form method="post" action="/waiting/join" id="joinForm" style="display:flex; flex-direction:column; gap:0; min-height:0;">
             <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
-            <input type="hidden" id="timeBucketInput" name="time_bucket" value="{{ selected_bucket }}">
             <input type="hidden" id="refInput" name="ref" value="{{ request.query_params.get('ref') or '' }}">
 
-            <div class="slot-list">
-              {% for tb in ['now','30','60'] %}
-                {% set slot = board.get(tb) %}
-                <div class="slot-card {% if tb == selected_bucket %}selected{% endif %}" data-bucket="{{ tb }}">
-                  <div class="slot-header">
-                    <div class="slot-left">
-                      <span class="slot-label">{{ tb_labels[tb] }}</span>
-                      <span class="time-caption">{{ time_windows[tb].label }}</span>
-                    </div>
-                  {% set cnt = slot.count if slot else 0 %}
-                    <span class="badge {% if cnt > 0 %}badge--active{% endif %}" data-bucket="{{ tb }}-badge">
-                      {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
-                    </span>
-                  </div>
-                  <div class="slot-members" data-bucket="{{ tb }}" style="font-size:13px; color: var(--muted);">
-                    {% if slot and slot.members %}
-                      {%- set handles = slot.members -%}
-                      {%- set show_handles = handles[:2] -%}
-                      {%- set extra = handles|length - show_handles|length -%}
-                      {%- for m in show_handles -%}
-                        @{{ m }}{% if not loop.last %}, {% endif %}
-                      {%- endfor -%}
-                      {% if extra > 0 %} +{{ extra }}{% endif %}
-                    {% endif %}
-                  </div>
-                </div>
-              {% endfor %}
+            <label class="label" for="goTimePicker" style="margin-top:12px;">Kdaj greš</label>
+            <div class="time-picker-row">
+              <input type="time" id="goTimePicker" name="go_time" value="{{ selected_go_time }}" step="300" required>
+            </div>
+            <p class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></p>
+
+            <div class="window-card">
+              <div class="window-header">
+                <span class="window-title">Kdo gre v tem času</span>
+                <span class="badge {% if selected_count > 0 %}badge--active{% endif %}" id="selectedCountBadge">
+                  {% if selected_count == 1 %}1 gre{% elif selected_count == 0 %}0 gre{% else %}{{ selected_count }} gredo{% endif %}
+                </span>
+              </div>
+              <div class="window-members" id="selectedMembers">
+                {% if selected_members %}
+                  {%- set handles = selected_members[:2] -%}
+                  {%- set extra = selected_members|length - handles|length -%}
+                  {%- for m in handles -%}
+                    @{{ m }}{% if not loop.last %}, {% endif %}
+                  {%- endfor -%}
+                  {% if extra > 0 %} +{{ extra }}{% endif %}
+                {% endif %}
+              </div>
             </div>
 
             <div class="input-row">
@@ -265,14 +251,14 @@
             </div>
           </form>
 
-          {% if user_bucket %}
+          {% if user_go_time %}
             <div class="status">
-              <span class="pill">Ti si prijavljen za: {{ tb_labels[user_bucket] }}</span>
+              <span class="pill">Tvoj čas: {{ user_go_time }}</span>
             </div>
             <form method="post" action="/waiting/leave" style="margin-top:10px;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
-              <input type="hidden" name="time_bucket" value="{{ user_bucket }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
+              <input type="hidden" id="leaveGoTimeInput" name="go_time" value="{{ selected_go_time }}">
               <button class="btn" type="submit" style="width:100%; background:#ffffff; color: var(--accent); border:1px solid var(--accent);">Prekliči</button>
             </form>
           {% endif %}
@@ -284,90 +270,29 @@
                 const el = document.getElementById('userIdInput');
                 if (el) { setTimeout(() => el.focus(), 50); }
               }
-              const slots = document.querySelectorAll('.slot-card');
-              const hidden = document.getElementById('timeBucketInput');
-              let selected = '{{ selected_bucket }}';
-              function updateSelection(bucket) {
-                selected = bucket;
-                if (hidden) hidden.value = bucket;
-                slots.forEach(el => {
-                  if (el.dataset.bucket === bucket) {
-                    el.classList.add('selected');
-                  } else {
-                    el.classList.remove('selected');
-                  }
-                });
-              }
-              slots.forEach(el => {
-                el.addEventListener('click', () => {
-                  updateSelection(el.dataset.bucket);
-                });
-              });
-              updateSelection(selected);
-            })();
-
-            // Share active plan (invite friend)
-            (function() {
-              const btn = document.getElementById('shareActivePlanBtn');
-              if (!btn) return;
-              const original = btn.textContent;
-              const baseUrl = btn.dataset.url || window.location.href;
-              const fullUrl = baseUrl.startsWith('http') ? baseUrl : `${window.location.origin}${baseUrl}`;
-              const restaurantName = btn.dataset.name || 'BoniBuddy';
-              const bucket = btn.dataset.bucket || '';
-              const bucketLabel = ({ now: 'zdaj', '30': '+30 min', '60': '+60 min' }[bucket]) || bucket;
-              const inviteText = `Pridruži se mi v ${restaurantName} (${bucketLabel}).`;
-
-              const track = (event, extra = {}) => {
-                try {
-                  if (typeof window.gtag !== 'function') return;
-                  gtag('event', event, { restaurant_id: btn.dataset.restaurant, time_bucket: bucket, source: 'active_plan', ...extra });
-                } catch (e) {}
-              };
-
-              async function shareNative() {
-                if (!navigator.share) throw new Error('no_share');
-                await navigator.share({ title: 'BoniBuddy', text: inviteText, url: fullUrl });
-              }
-
-              async function copyFallback() {
-                await navigator.clipboard.writeText(`${inviteText}\n${fullUrl}`.trim());
-              }
-
-              btn.addEventListener('click', async () => {
-                track('share_invite_click');
-                try {
-                  await shareNative();
-                  btn.textContent = 'Poslano ✅';
-                  track('share_invite_sent', { method: 'native' });
-                } catch (err) {
+              const picker = document.getElementById('goTimePicker');
+              const leaveInput = document.getElementById('leaveGoTimeInput');
+              if (picker) {
+                if (leaveInput) leaveInput.value = picker.value;
+                picker.addEventListener('change', () => {
+                  if (leaveInput) leaveInput.value = picker.value;
                   try {
-                    await copyFallback();
-                    btn.textContent = 'Povezava kopirana';
-                    track('share_invite_sent', { method: 'copy' });
-                  } catch (_err) {
-                    btn.textContent = 'Deljenje ni uspelo';
-                  }
-                }
-                setTimeout(() => { btn.textContent = original; }, 2000);
-              });
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('go_time', picker.value);
+                    window.history.replaceState({}, '', url.toString());
+                  } catch (e) {}
+                });
+              }
             })();
 
-            // Live refresh of slot counts/members
+            // Live refresh of counts/members for selected go_time
             (function() {
               const restaurantId = '{{ restaurant_id }}';
-              if (!restaurantId) return;
-
-              const badgeMap = {
-                'now': document.querySelector('[data-bucket=\"now-badge\"]'),
-                '30': document.querySelector('[data-bucket=\"30-badge\"]'),
-                '60': document.querySelector('[data-bucket=\"60-badge\"]'),
-              };
-              const memberMap = {
-                'now': document.querySelector('.slot-members[data-bucket=\"now\"]'),
-                '30': document.querySelector('.slot-members[data-bucket=\"30\"]'),
-                '60': document.querySelector('.slot-members[data-bucket=\"60\"]'),
-              };
+              const picker = document.getElementById('goTimePicker');
+              const badgeEl = document.getElementById('selectedCountBadge');
+              const membersEl = document.getElementById('selectedMembers');
+              const labelEl = document.getElementById('windowLabel');
+              if (!restaurantId || !picker || !badgeEl || !membersEl || !labelEl) return;
 
               function renderBadge(el, count) {
                 if (!el) return;
@@ -387,20 +312,19 @@
 
               async function refresh() {
                 try {
-                  const res = await fetch(`/api/waiting_board/${restaurantId}`);
+                  const res = await fetch(`/api/waiting_board/${restaurantId}?go_time=${encodeURIComponent(picker.value)}`);
                   if (!res.ok) return;
                   const data = await res.json();
-                  ['now','30','60'].forEach(tb => {
-                    const slot = data?.[tb] || {};
-                    renderBadge(badgeMap[tb], Number(slot.count || 0));
-                    renderMembers(memberMap[tb], slot.members || []);
-                  });
+                  labelEl.textContent = data.window_label || '';
+                  renderBadge(badgeEl, Number(data.count || 0));
+                  renderMembers(membersEl, data.members || []);
                 } catch (e) {
                   // best effort; ignore
                 }
               }
 
               refresh();
+              picker.addEventListener('change', refresh);
               setInterval(refresh, 5000);
             })();
 
@@ -413,10 +337,10 @@
                 if (sent || typeof window.gtag !== 'function') return;
                 sent = true;
                 const restaurantId = form.querySelector('input[name=\"restaurant_id\"]')?.value || undefined;
-                const timeBucket = form.querySelector('input[name=\"time_bucket\"]')?.value || undefined;
+                const goTime = form.querySelector('input[name=\"go_time\"]')?.value || undefined;
                 gtag('event', 'slot_filled', {
                   restaurant_id: restaurantId,
-                  time_bucket: timeBucket,
+                  go_time: goTime,
                 });
               });
             })();
