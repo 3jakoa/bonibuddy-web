@@ -222,11 +222,9 @@
     .search-clear:hover{background: #d7f0fc; border-color: #92DBF3;}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1.5px solid #92DBF3; background: transparent; color:#007FBF; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap; box-shadow: none;}
     .chip--active{border: none; background: var(--accent); color:#ffffff; box-shadow: none;}
-    .chip-row--time{display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; flex-wrap:nowrap;}
-    .chip-row--time .chip{height:auto; padding:8px 12px; flex-direction:column; gap:2px; white-space:normal; line-height:1.1; text-align:center; border-radius:12px; width:100%; min-width:0;}
-    .chip__primary{font-size:14px; font-weight:700; white-space:nowrap;}
-    .chip__secondary{font-size:11px; font-weight:400; color:#5F7A94; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .chip--active .chip__secondary{color:#DFF2FF;}
+    .time-row{display:flex; gap:10px; align-items:center; margin:6px 0 4px;}
+    .time-input{width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px;}
+    .time-input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
     .chip-stack{display:flex; flex-direction:column; align-items:center; gap:8px;}
     .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:2px;}
     .restaurant-list{flex:1; min-height:0; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
@@ -326,27 +324,19 @@
       </div>
       <h1 style="margin-bottom:6px;">{{ _("Greš na bone?") }}</h1>
       {% include "_active_plan.html" %}
+      {% if msg %}<div class="error" style="margin-top:4px;">{{ msg }}</div>{% endif %}
 
-      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">{{ _("Kdaj greš") }}</div>
-      <div class="chip-row chip-row--time">
-        <a class="chip {% if selected_t == 'now' %}chip--active{% endif %}" href="/?t=now{% if query %}&q={{ query | urlencode }}{% endif %}">
-          <span class="chip__primary">{{ _("Zdaj") }}</span>
-          <span class="chip__secondary">{{ time_windows['now'].label }}</span>
-        </a>
-        <a class="chip {% if selected_t == '30' %}chip--active{% endif %}" href="/?t=30{% if query %}&q={{ query | urlencode }}{% endif %}">
-          <span class="chip__primary">+30</span>
-          <span class="chip__secondary">{{ time_windows['30'].label }}</span>
-        </a>
-        <a class="chip {% if selected_t == '60' %}chip--active{% endif %}" href="/?t=60{% if query %}&q={{ query | urlencode }}{% endif %}">
-          <span class="chip__primary">+60</span>
-          <span class="chip__secondary">{{ time_windows['60'].label }}</span>
-        </a>
-      </div>
+      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
+      <form id="goTimeForm" class="time-row" method="get" action="/">
+        <input class="time-input" type="time" name="go_time" value="{{ selected_go_time }}" step="300" required>
+        <input type="hidden" name="q" value="{{ query }}">
+      </form>
+      <div class="time-caption">Aktivno okno: {{ selected_window_label }}</div>
 
       <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">{{ _("Poišči kam greš") }}</div>
       <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
-        <input type="hidden" name="t" value="{{ selected_t }}">
-        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="{{ _('Išči po imenu (Ljubljana)') }}" autocomplete="off">
+        <input type="hidden" name="go_time" value="{{ selected_go_time }}">
+        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
         {% if query %}
           <button type="button" class="search-clear" aria-label="{{ _('Počisti iskanje') }}"
                   onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
@@ -358,7 +348,7 @@
           <div id="restaurantList" class="list">
             {% for item in rows %}
               {% set is_active = item.count > 0 %}
-              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?t={{ selected_t }}&join=1" style="{% if is_active %}cursor:default;{% endif %}" data-name="{{ item.restaurant.name|lower }}" data-subtitle="{{ (item.restaurant.address or item.restaurant.city)|lower }}">
+              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1" style="{% if is_active %}cursor:default;{% endif %}" data-name="{{ item.restaurant.name|lower }}" data-subtitle="{{ (item.restaurant.address or item.restaurant.city)|lower }}">
                 <div class="rest-info">
                   <div class="rest-name">{{ item.restaurant.name }}</div>
                   <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
@@ -448,6 +438,12 @@
   // Waiting-board live filter
   {% if feature_waiting_board %}
   (function() {
+    const goTimeInput = document.querySelector('#goTimeForm input[name="go_time"]');
+    const goTimeForm = document.getElementById('goTimeForm');
+    if (goTimeInput && goTimeForm) {
+      goTimeInput.addEventListener('change', () => goTimeForm.submit());
+    }
+
     const searchInput = document.getElementById('restSearch');
     const list = document.getElementById('restaurantList');
     const noResults = document.getElementById('noResults');

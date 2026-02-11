@@ -1,11 +1,10 @@
 {% if active_plan %}
-  {% set tb_labels = {'now':'Zdaj', '30':'+30', '60':'+60'} %}
   {% set ref_handle = (request.cookies.get('bb_uid') or '')|urlencode %}
-  {% set share_url = '/waiting/' ~ active_plan.restaurant.id ~ '?t=' ~ active_plan.bucket ~ '&join=1&ref=' ~ ref_handle %}
+  {% set share_url = '/waiting/' ~ active_plan.restaurant.id ~ '?go_time=' ~ (active_plan.go_time|urlencode) ~ '&join=1&ref=' ~ ref_handle %}
   <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
     <div>
-      <div style="font-weight:700;">{{ _("Tvoj plan") }}</div>
-      <div style="font-size:13px; color: var(--muted);">{{ active_plan.restaurant.name }} · {{ tb_labels.get(active_plan.bucket, active_plan.bucket) }}</div>
+      <div style="font-weight:700;">Tvoj plan</div>
+      <div style="font-size:13px; color: var(--muted);">{{ active_plan.restaurant.name }} · {{ active_plan.window_label }} ({{ active_plan.expires_label }})</div>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
       <button type="button"
@@ -13,15 +12,14 @@
               data-url="{{ share_url }}"
               data-name="{{ active_plan.restaurant.name }}"
               data-restaurant="{{ active_plan.restaurant.id }}"
-              data-bucket="{{ active_plan.bucket }}"
+              data-go-time="{{ active_plan.go_time }}"
               class="chip chip--active"
               style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:var(--accent); border-color:var(--accent); color:#ffffff;">
         {{ _("Deli") }}
       </button>
       <form method="post" action="/plan/cancel" style="margin:0;">
         <input type="hidden" name="restaurant_id" value="{{ active_plan.restaurant.id }}">
-        <input type="hidden" name="time_bucket" value="{{ active_plan.bucket }}">
-        <button type="submit" class="chip" style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:#EAF7FD; border:1px solid #92DBF3; color:#007FBF;">{{ _("Prekliči") }}</button>
+        <button type="submit" class="chip" style="height:34px; padding:0 12px; font-size:13px; border-radius:10px; background:#EAF7FD; border:1px solid #92DBF3; color:#007FBF;">Prekliči</button>
       </form>
     </div>
   </div>
@@ -36,14 +34,13 @@
     const baseUrl = btn.dataset.url || window.location.href;
     const fullUrl = baseUrl.startsWith('http') ? baseUrl : `${window.location.origin}${baseUrl}`;
     const restaurantName = btn.dataset.name || 'BoniBuddy';
-    const bucket = btn.dataset.bucket || '';
-    const bucketLabel = ({ now: 'zdaj', '30': '+30 min', '60': '+60 min' }[bucket]) || bucket;
-    const inviteText = `Pridruži se mi v ${restaurantName} (${bucketLabel}).`;
+    const goTime = btn.dataset.goTime || '';
+    const inviteText = `Pridruži se mi v ${restaurantName} ob ${goTime}.`;
 
     const track = (event, extra = {}) => {
       try {
         if (typeof window.gtag !== 'function') return;
-        gtag('event', event, { restaurant_id: btn.dataset.restaurant, time_bucket: bucket, source: 'active_plan', ...extra });
+        gtag('event', event, { restaurant_id: btn.dataset.restaurant, go_time: goTime, source: 'active_plan', ...extra });
       } catch (e) {}
     };
 

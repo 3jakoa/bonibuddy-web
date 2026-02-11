@@ -70,12 +70,12 @@
   <div class="card">
     {% include "_active_plan.html" %}
     <div class="header">
-      <div class="header-title">{{ _("Kam greš jest?") }}</div>
-      <div class="rest-sub">{{ _("Izbrano:") }} {% if time_bucket == 'now' %}{{ _("Grem zdaj") }}{% elif time_bucket == '30' %}{{ _("Grem čez 30 min") }}{% else %}{{ _("Grem čez 60 min") }}{% endif %}</div>
+      <div class="header-title">Kam greš jest?</div>
+      <div class="rest-sub">Izbrano: {{ selected_window_label }}</div>
     </div>
     <form class="search-bar" method="get" action="/choose">
-      <input type="hidden" name="t" value="{{ time_bucket }}">
-      <input type="text" name="q" value="{{ query }}" placeholder="{{ _('Išči menzo po imenu') }}" autocomplete="off">
+      <input type="hidden" name="go_time" value="{{ selected_go_time }}">
+      <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo po imenu" autocomplete="off">
       {% if query %}
         <button type="button" class="search-clear" aria-label="{{ _('Počisti iskanje') }}"
                 onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
@@ -86,7 +86,7 @@
       {% if restaurants_with_counts %}
         {% for item in restaurants_with_counts %}
           <div class="rest-row">
-            <a href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}">
+            <a href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}">
               <div class="rest-name">{{ item.restaurant.name }}</div>
               <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
             </a>
@@ -95,6 +95,7 @@
               <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
                 {% if cnt == 1 %}{{ _("1 gre") }}{% elif cnt == 0 %}{{ _("0 gre") }}{% else %}{{ _("%(count)s gredo", count=cnt) }}{% endif %}
               </div>
+              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1">Join</a>
               <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">{{ _("Pridruži se") }}</a>
             </div>
           </div>

@@ -90,7 +90,6 @@ def send_push_to_rid(rid: str, payload: Dict[str, Any]) -> bool:
 
 WINDOW_MIN = 15
 EXPIRE_MIN = 90  # po koliko min request poteče
-WAITING_MEMBER_TTL_MIN = 90  # minutes a waiting-board member stays alive
 
 # Waiting board locations (keep in sync with app UI)
 LOCATION_LABELS = {
@@ -105,7 +104,7 @@ LOCATION_LABELS = {
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_RESTAURANT_PATHS = [BASE_DIR / "data" / "restaurants.json", BASE_DIR / "restaurants.json"]
 
-ALLOWED_TIME_BUCKETS = {"now", "30", "60"}
+ACTIVE_WINDOW_MINUTES = 30
 
 
 # ----------------- Waiting board MVP (no forced matches) -----------------
@@ -135,7 +134,6 @@ class Restaurant:
 class WaitingSlot:
     id: str
     restaurant_id: str
-    time_bucket: str  # "now" | "30" | "60"
     created_at: datetime
 
 
@@ -144,11 +142,11 @@ class SlotMember:
     slot_id: str
     user_id: str  # instagram handle for MVP
     joined_at: datetime
-    initial_time_bucket: str  # stores the bucket user selected when joining
+    target_time: datetime  # UTC-aware selected go_time
 
 
 # In-memory storage for MVP; simplest possible and mirrors existing style.
-waiting_slots: Dict[tuple[str, str], WaitingSlot] = {}  # key: (restaurant_id, time_bucket)
+waiting_slots: Dict[str, WaitingSlot] = {}  # key: restaurant_id
 slot_members: Dict[str, List[SlotMember]] = {}  # key: slot_id -> members
 
 
@@ -275,15 +273,44 @@ def get_restaurant(restaurant_id: str) -> Optional[Restaurant]:
     return None
 
 
-def _get_or_create_slot(restaurant_id: str, time_bucket: str) -> WaitingSlot:
-    key = (restaurant_id, time_bucket)
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _window_end(member: SlotMember) -> datetime:
+    return _to_utc(member.target_time) + timedelta(minutes=ACTIVE_WINDOW_MINUTES)
+
+
+def _is_member_active_for_time(member: SlotMember, selected_time: datetime) -> bool:
+    selected_utc = _to_utc(selected_time)
+    start = _to_utc(member.target_time)
+    return start <= selected_utc < _window_end(member)
+
+
+def _normalize_members(handles: List[str]) -> List[str]:
+    normalized: List[str] = []
+    seen: set[str] = set()
+    for handle in handles:
+        s = (handle or "").strip().lstrip("@")
+        if not s:
+            continue
+        if s in seen:
+            continue
+        seen.add(s)
+        normalized.append(s)
+    return normalized
+
+
+def _get_or_create_slot(restaurant_id: str) -> WaitingSlot:
+    key = (restaurant_id or "").strip().lower()
     slot = waiting_slots.get(key)
     if slot:
         return slot
     slot = WaitingSlot(
         id=uuid.uuid4().hex[:10],
-        restaurant_id=restaurant_id,
-        time_bucket=time_bucket,
+        restaurant_id=key,
         created_at=datetime.now(timezone.utc),
     )
     waiting_slots[key] = slot
@@ -295,68 +322,26 @@ def _get_members(slot_id: str) -> List[SlotMember]:
 
 
 def _find_member_slot(restaurant_id: str, user_norm: str) -> Optional[tuple[WaitingSlot, SlotMember]]:
-    """Return current slot + member if user is already in any bucket for the restaurant."""
-    for tb in ["now", "30", "60"]:
-        slot = waiting_slots.get((restaurant_id, tb))
-        if not slot:
-            continue
-        for m in _get_members(slot.id):
-            if _normalize_instagram(m.user_id) == user_norm:
-                return slot, m
+    """Return current slot + member if user is already active for this restaurant."""
+    rid = (restaurant_id or "").strip().lower()
+    slot = waiting_slots.get(rid)
+    if not slot:
+        return None
+    now = datetime.now(timezone.utc)
+    for m in _get_members(slot.id):
+        if _normalize_instagram(m.user_id) == user_norm and _window_end(m) > now:
+            return slot, m
     return None
 
 
 def cleanup_waiting_board(now: datetime | None = None) -> None:
     if now is None:
         now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(minutes=WAITING_MEMBER_TTL_MIN)
 
     with match_lock:
-        slot_by_id = {slot.id: slot for slot in waiting_slots.values()}
-        slot_restaurant_by_id = {slot.id: restaurant_id for (restaurant_id, _tb), slot in waiting_slots.items()}
-
-        def desired_bucket(initial_bucket: str, joined_at: datetime) -> str:
-            """Return the bucket where this member should currently live."""
-            elapsed_min = (now - joined_at).total_seconds() / 60
-            initial_bucket = initial_bucket if initial_bucket in ALLOWED_TIME_BUCKETS else "now"
-            if initial_bucket == "60":
-                if elapsed_min >= 60:
-                    return "now"
-                if elapsed_min >= 30:
-                    return "30"
-                return "60"
-            if initial_bucket == "30":
-                return "now" if elapsed_min >= 30 else "30"
-            return "now"
-
         for slot_id in list(slot_members.keys()):
             members = slot_members.get(slot_id, [])
-            fresh_members: List[SlotMember] = []
-            for m in members:
-                joined_at = m.joined_at
-                if joined_at.tzinfo is None:
-                    joined_at = joined_at.replace(tzinfo=timezone.utc)
-                if joined_at < cutoff:
-                    continue
-
-                slot = slot_by_id.get(slot_id)
-                current_bucket = slot.time_bucket if slot else m.initial_time_bucket
-                target_bucket = desired_bucket(m.initial_time_bucket, joined_at)
-
-                if target_bucket != current_bucket:
-                    # Move member into the correct bucket (create slot if needed).
-                    restaurant_id = slot_restaurant_by_id.get(slot_id)
-                    if restaurant_id:
-                        target_slot = _get_or_create_slot(restaurant_id, target_bucket)
-                        slot_by_id[target_slot.id] = target_slot
-                        slot_restaurant_by_id[target_slot.id] = restaurant_id
-                        m.slot_id = target_slot.id
-                        slot_members.setdefault(target_slot.id, []).append(m)
-                    else:
-                        # If we can't resolve restaurant, keep member in current slot.
-                        fresh_members.append(m)
-                else:
-                    fresh_members.append(m)
+            fresh_members: List[SlotMember] = [m for m in members if _window_end(m) > now]
             if fresh_members:
                 slot_members[slot_id] = fresh_members
             else:
@@ -371,69 +356,62 @@ def cleanup_waiting_board(now: datetime | None = None) -> None:
                 waiting_slots.pop(key, None)
 
 
-def join_slot(*, user_id: str, restaurant_id: str, time_bucket: str, referrer: str | None = None) -> dict:
-    """Join (or move) a waiting slot; idempotent; auto-move across buckets.
+def join_slot(*, user_id: str, restaurant_id: str, target_time: datetime, referrer: str | None = None) -> dict:
+    """Join or update waiting slot for exact go_time.
 
     referrer: optional instagram handle of inviter for attribution (not persisted yet, only logged).
     """
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return {"ok": False, "error": "invalid_time_bucket"}
+    if not target_time:
+        return {"ok": False, "error": "invalid_go_time"}
     restaurant_id = (restaurant_id or "").strip().lower()
     user_norm = _normalize_instagram(user_id)
+    target_time_utc = _to_utc(target_time)
+    now = datetime.now(timezone.utc)
+    if target_time_utc < now.replace(second=0, microsecond=0):
+        return {"ok": False, "error": "go_time_in_past"}
 
     cleanup_waiting_board()
 
     with match_lock:
-        # Remove from other bucket if present
         existing = _find_member_slot(restaurant_id, user_norm)
+        existing_target_iso = None
         if existing:
             slot_prev, member_prev = existing
+            existing_target_iso = _to_utc(member_prev.target_time).isoformat()
             slot_members[slot_prev.id] = [m for m in _get_members(slot_prev.id) if m is not member_prev]
 
-        slot = _get_or_create_slot(restaurant_id, time_bucket)
+        slot = _get_or_create_slot(restaurant_id)
         members = slot_members.setdefault(slot.id, [])
-        before_count = len(members)
-
-        for m in members:
-            if _normalize_instagram(m.user_id) == user_norm:
-                return {
-                    "ok": True,
-                    "slot_id": slot.id,
-                    "already": True,
-                    "moved": bool(existing),
-                    "previous_count": before_count,
-                }
+        before_count = sum(1 for m in members if _is_member_active_for_time(m, target_time_utc))
 
         members.append(
             SlotMember(
                 slot_id=slot.id,
                 user_id=user_norm,
                 joined_at=datetime.now(timezone.utc),
-                initial_time_bucket=time_bucket,
+                target_time=target_time_utc,
             )
         )
+
     waiting_board_logger.info(
-        "join_slot restaurant=%s time_bucket=%s user=%s moved_from=%s referrer=%s",
+        "join_slot restaurant=%s target_time=%s user=%s moved_from=%s referrer=%s",
         restaurant_id,
-        time_bucket,
+        target_time_utc.isoformat(),
         user_norm,
-        existing[0].time_bucket if existing else None,
+        existing_target_iso,
         _normalize_instagram(referrer) if referrer else None,
     )
     return {"ok": True, "slot_id": slot.id, "moved": bool(existing), "previous_count": before_count}
 
 
-def leave_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return {"ok": False, "error": "invalid_time_bucket"}
+def leave_slot(*, user_id: str, restaurant_id: str) -> dict:
     restaurant_id = (restaurant_id or "").strip().lower()
-    key = (restaurant_id, time_bucket)
     user_norm = _normalize_instagram(user_id)
 
     cleanup_waiting_board()
 
     with match_lock:
-        slot = waiting_slots.get(key)
+        slot = waiting_slots.get(restaurant_id)
         if not slot:
             return {"ok": True, "slot_id": None}
 
@@ -442,37 +420,66 @@ def leave_slot(*, user_id: str, restaurant_id: str, time_bucket: str) -> dict:
         members = [m for m in members if _normalize_instagram(m.user_id) != user_norm]
         slot_members[slot.id] = members
     waiting_board_logger.info(
-        "leave_slot restaurant=%s time_bucket=%s user=%s removed=%s",
+        "leave_slot restaurant=%s user=%s removed=%s",
         restaurant_id,
-        time_bucket,
         user_norm,
         before != len(members),
     )
     return {"ok": True, "slot_id": slot.id}
 
 
-def get_waiting_board(restaurant_id: str) -> dict:
-    """Return per-time-bucket member counts and handles for a restaurant."""
+def get_waiting_board(restaurant_id: str, selected_time: datetime | None = None) -> dict:
+    """Return counts for selected window or grouped active windows."""
     restaurant_id = (restaurant_id or "").strip().lower()
 
     cleanup_waiting_board()
 
     with match_lock:
-        board = {}
-        for tb in ["now", "30", "60"]:
-            slot = _get_or_create_slot(restaurant_id, tb)
-            members = _get_members(slot.id)
-            board[tb] = {
-                "slot_id": slot.id,
-                "count": len(members),
-                "members": [m.user_id for m in members],
+        slot = waiting_slots.get(restaurant_id)
+        members = _get_members(slot.id) if slot else []
+        if selected_time is not None:
+            selected_utc = _to_utc(selected_time)
+            filtered_members = [m for m in members if _is_member_active_for_time(m, selected_utc)]
+            handles = _normalize_members([m.user_id for m in filtered_members])
+            return {
+                "count": len(handles),
+                "members": handles,
+                "target_time_iso": selected_utc.isoformat(),
+                "window_end_iso": (selected_utc + timedelta(minutes=ACTIVE_WINDOW_MINUTES)).isoformat(),
             }
-    return board
+
+        now = datetime.now(timezone.utc)
+        grouped: Dict[str, dict[str, Any]] = {}
+        for m in members:
+            start = _to_utc(m.target_time).replace(second=0, microsecond=0)
+            if start + timedelta(minutes=ACTIVE_WINDOW_MINUTES) <= now:
+                continue
+            key = start.isoformat()
+            group = grouped.setdefault(
+                key,
+                {
+                    "target_time_iso": key,
+                    "window_end_iso": (start + timedelta(minutes=ACTIVE_WINDOW_MINUTES)).isoformat(),
+                    "members": [],
+                },
+            )
+            group["members"].append(m.user_id)
+
+        output: Dict[str, dict[str, Any]] = {}
+        for key in sorted(grouped.keys()):
+            handles = _normalize_members(grouped[key]["members"])
+            output[key] = {
+                "target_time_iso": grouped[key]["target_time_iso"],
+                "window_end_iso": grouped[key]["window_end_iso"],
+                "count": len(handles),
+                "members": handles,
+            }
+        return output
 
 
 def get_waiting_total(restaurant_id: str) -> int:
     board = get_waiting_board(restaurant_id)
-    return sum(board[tb]["count"] for tb in board)
+    return sum(int(info.get("count") or 0) for info in board.values())
 
 
 def get_total_waiting_all() -> int:
@@ -482,56 +489,37 @@ def get_total_waiting_all() -> int:
     return total
 
 
-def get_waiting_count_all(time_bucket: str) -> int:
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return 0
+def get_waiting_count_all(selected_time: datetime) -> int:
     total = 0
     for r in restaurants:
-        total += get_waiting_count(r.id, time_bucket)
+        total += get_waiting_count(r.id, selected_time)
     return total
 
 
-def get_waiting_members(restaurant_id: str, time_bucket: str) -> List[str]:
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return []
-    board = get_waiting_board(restaurant_id)
-    slot = board.get(time_bucket) or {}
-    members = slot.get("members") or []
-    # normalize to single '@' prefix when shown
-    normalized = []
-    for m in members:
-        s = (m or "").strip()
-        if s.startswith("@"):
-            s = s.lstrip("@")
-        normalized.append(s)
-    return normalized
+def get_waiting_members(restaurant_id: str, selected_time: datetime) -> List[str]:
+    board = get_waiting_board(restaurant_id, selected_time=selected_time)
+    return list(board.get("members") or [])
 
 
-def get_waiting_count(restaurant_id: str, time_bucket: str) -> int:
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return 0
-    board = get_waiting_board(restaurant_id)
-    slot = board.get(time_bucket) or {}
-    return int(slot.get("count") or 0)
+def get_waiting_count(restaurant_id: str, selected_time: datetime) -> int:
+    board = get_waiting_board(restaurant_id, selected_time=selected_time)
+    return int(board.get("count") or 0)
 
 
-def get_top_active_restaurants(time_bucket: str, limit: int = 5, city: str | None = "ljubljana", search: str | None = None) -> List[dict[str, Any]]:
-    if time_bucket not in ALLOWED_TIME_BUCKETS:
-        return []
+def get_top_active_restaurants(selected_time: datetime, limit: int = 5, city: str | None = "ljubljana", search: str | None = None) -> List[dict[str, Any]]:
     rows = []
     candidate_restaurants = list_restaurants(city=city, search=search)
     for r in candidate_restaurants:
-        cnt = get_waiting_count(r.id, time_bucket)
+        cnt = get_waiting_count(r.id, selected_time)
         if cnt <= 0:
             continue
-        rows.append({"restaurant": r, "count": cnt, "members": get_waiting_members(r.id, time_bucket)})
+        rows.append({"restaurant": r, "count": cnt, "members": get_waiting_members(r.id, selected_time)})
     rows.sort(key=lambda x: (-x["count"], x["restaurant"].name.lower()))
     return rows[:limit]
 
 
-# Top restaurants by total waiting across all buckets (now+30+60)
 def get_top_active_restaurants_total(limit: int = 3) -> List[dict[str, Any]]:
-    """Top restaurants by total waiting across all buckets (now+30+60)."""
+    """Top restaurants by total currently active cards."""
     rows: List[dict[str, Any]] = []
     for r in restaurants:
         total = get_waiting_total(r.id)
@@ -543,31 +531,42 @@ def get_top_active_restaurants_total(limit: int = 3) -> List[dict[str, Any]]:
 
 
 def get_user_bucket(restaurant_id: str, user_id: str) -> Optional[str]:
-    """Return the bucket (now/30/60) where user is present for this restaurant."""
+    """Backward-compatible helper; now returns go_time (HH:MM)."""
     restaurant_id = (restaurant_id or "").strip().lower()
     user_norm = _normalize_instagram(user_id)
     found = _find_member_slot(restaurant_id, user_norm)
-    return found[0].time_bucket if found else None
+    if not found:
+        return None
+    return _to_utc(found[1].target_time).strftime("%H:%M")
 
 
-def get_user_membership(user_id: str) -> Optional[dict[str, str]]:
-    """Return the restaurant/time bucket where user currently has an active plan."""
+def get_user_membership(user_id: str) -> Optional[dict[str, Any]]:
+    """Return active restaurant + target time for this user."""
     user_norm = _normalize_instagram(user_id)
     if not user_norm:
         return None
 
     cleanup_waiting_board()
+    now = datetime.now(timezone.utc)
 
     with match_lock:
-        slot_lookup: dict[str, tuple[str, str]] = {
-            slot.id: (rid, tb) for (rid, tb), slot in waiting_slots.items()
-        }
+        slot_lookup: dict[str, str] = {slot.id: rid for rid, slot in waiting_slots.items()}
         for slot_id, members in slot_members.items():
             for m in members:
-                if _normalize_instagram(m.user_id) == user_norm:
-                    rid, tb = slot_lookup.get(slot_id, (None, None))
-                    if rid and tb:
-                        return {"restaurant_id": rid, "time_bucket": tb}
+                if _normalize_instagram(m.user_id) != user_norm:
+                    continue
+                if _window_end(m) <= now:
+                    continue
+                rid = slot_lookup.get(slot_id)
+                if rid:
+                    target = _to_utc(m.target_time)
+                    return {
+                        "restaurant_id": rid,
+                        "target_time": target,
+                        "target_time_iso": target.isoformat(),
+                        "go_time": target.strftime("%H:%M"),
+                        "window_end_iso": (target + timedelta(minutes=ACTIVE_WINDOW_MINUTES)).isoformat(),
+                    }
     return None
 
 
@@ -577,7 +576,7 @@ def get_waiting_summary_for_location(location_id: str) -> List[dict[str, Any]]:
     result: List[dict[str, Any]] = []
     for r in list_restaurants(city=loc_norm):
         board = get_waiting_board(r.id)
-        total = sum((board[tb]["count"] for tb in board))
+        total = sum((int(info.get("count") or 0) for info in board.values()))
         result.append(
             {
                 "restaurant": r,
