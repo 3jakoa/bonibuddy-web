@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, urlencode
 import os
+import re
 
 import engine_web as engine
 
@@ -22,6 +23,7 @@ LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
 GO_TIME_STEP_MINUTES = 5
 ACTIVE_WINDOW_MINUTES = 30
 LEGACY_T_OFFSETS = {"now": 0, "30": 30, "60": 60}
+INSTAGRAM_HANDLE_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
 
 
 def _now_local() -> datetime:
@@ -144,6 +146,7 @@ def _build_feed_items(now: datetime | None = None) -> list[dict]:
                     "restaurant_name": r.name,
                     "go_time": _format_go_time(target_time),
                     "count": count,
+                    "members": [normalize_instagram(m or "") for m in (info.get("members") or []) if normalize_instagram(m or "")],
                     "window_label": _window_label_for(target_time),
                     "sort_time": _to_local(target_time),
                 }
@@ -191,6 +194,13 @@ class PushTestIn(BaseModel):
     title: str | None = None
     body: str | None = None
     url: str | None = None
+
+
+class PublishSlotIn(BaseModel):
+    restaurant_id: str
+    go_time: str
+    user_id: str
+    ref: str | None = None
 
 
 @app.post("/api/push/subscribe")
@@ -246,6 +256,25 @@ def normalize_instagram(raw: str) -> str:
     return s
 
 
+def _normalize_and_validate_instagram(raw: str) -> str | None:
+    handle = normalize_instagram(raw)
+    if not handle:
+        return None
+    if not INSTAGRAM_HANDLE_RE.fullmatch(handle):
+        return None
+    return handle
+
+
+def _resolve_browser_uid_lock(request: Request, submitted_uid_raw: str) -> tuple[str | None, str | None, str | None, str | None]:
+    locked_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "")
+    submitted_uid = _normalize_and_validate_instagram(submitted_uid_raw)
+    if not submitted_uid:
+        return locked_uid, submitted_uid, None, "invalid_user_id"
+    if locked_uid and submitted_uid.lower() != locked_uid.lower():
+        return locked_uid, submitted_uid, None, "locked_browser_uid_mismatch"
+    return locked_uid, submitted_uid, (locked_uid or submitted_uid), None
+
+
 def _get_active_plan(user_id: str | None) -> dict | None:
     if not user_id:
         return None
@@ -272,6 +301,61 @@ def _get_active_plan(user_id: str | None) -> dict | None:
         "window_label": f"{target_local:%H:%M}–{window_end:%H:%M}",
         "expires_label": f"do {window_end:%H:%M}",
     }
+
+
+def _publish_waiting_slot(
+    *,
+    restaurant_id: str,
+    go_time_raw: str,
+    user_id_raw: str,
+    referrer_raw: str | None = None,
+) -> tuple[dict | None, str | None]:
+    user_id = _normalize_and_validate_instagram(user_id_raw)
+    if not user_id:
+        return None, "invalid_user_id"
+
+    restaurant_id_norm = (restaurant_id or "").strip().lower()
+    if not restaurant_id_norm:
+        return None, "missing_restaurant_id"
+    if not engine.get_restaurant(restaurant_id_norm):
+        return None, "restaurant_not_found"
+
+    selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
+        go_time_raw=go_time_raw,
+        allow_past=False,
+        default_to_now=False,
+    )
+    if err or not selected_time or not selected_go_time:
+        return None, "invalid_go_time"
+
+    existing_plan = engine.get_user_membership(user_id)
+    if existing_plan and existing_plan.get("restaurant_id") != restaurant_id_norm:
+        return None, "active_plan_exists"
+
+    res = engine.join_slot(
+        user_id=user_id,
+        restaurant_id=restaurant_id_norm,
+        target_time=selected_time,
+        referrer=normalize_instagram(referrer_raw or ""),
+    )
+    if not res.get("ok"):
+        return None, res.get("error", "join_failed")
+
+    previous_count = int(res.get("previous_count") or 0)
+    created_new = previous_count == 0
+    window_count = max(previous_count + 1, 1)
+    return (
+        {
+            "restaurant_id": restaurant_id_norm,
+            "user_id": user_id,
+            "go_time": selected_go_time,
+            "window_label": _window_label_for(selected_time),
+            "created_new": created_new,
+            "other_count": max(previous_count, 0),
+            "window_count": window_count,
+        },
+        None,
+    )
 
 # --- PWA convenience routes (some browsers request these at the root) ---
 @app.get("/manifest.webmanifest")
@@ -305,7 +389,8 @@ def pwa_apple_touch_icon_120_precomposed():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     if FEATURE_WAITING_BOARD:
-        query_raw = (request.query_params.get("q") or "").strip()
+        selected_restaurant_param = (request.query_params.get("restaurant_id") or "").strip().lower()
+        ref_param = normalize_instagram(request.query_params.get("ref") or "")
         selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
             go_time_raw=request.query_params.get("go_time"),
             legacy_t_raw=request.query_params.get("t"),
@@ -319,32 +404,38 @@ def index(request: Request):
             elif err == "invalid_time":
                 msg = "Neveljaven čas. Uporabi obliko HH:MM."
             return RedirectResponse(
-                url=_with_query("/", go_time=selected_go_time, q=query_raw or None, msg=msg or None),
+                url=_with_query(
+                    "/",
+                    go_time=selected_go_time,
+                    restaurant_id=selected_restaurant_param or None,
+                    ref=ref_param or None,
+                    msg=msg or None,
+                ),
                 status_code=303,
             )
         if mapped_legacy:
             return RedirectResponse(
-                url=_with_query("/", go_time=selected_go_time, q=query_raw or None, msg=msg or None),
+                url=_with_query(
+                    "/",
+                    go_time=selected_go_time,
+                    restaurant_id=selected_restaurant_param or None,
+                    ref=ref_param or None,
+                    msg=msg or None,
+                ),
                 status_code=303,
             )
 
-        candidate_restaurants = list(engine.list_restaurants(search=query_raw))
-        rows = []
-        total_waiting = 0
-        for r in candidate_restaurants:
-            cnt = engine.get_waiting_count(r.id, selected_time)
-            total_waiting += cnt
-            rows.append(
-                {
-                    "restaurant": r,
-                    "count": cnt,
-                    "members": engine.get_waiting_members(r.id, selected_time),
-                }
-            )
+        restaurants_for_picker = [
+            {
+                "id": r.id,
+                "name": r.name,
+                "subtitle": r.address or r.city or "",
+            }
+            for r in engine.list_restaurants()
+        ]
+        restaurants_for_picker.sort(key=lambda x: x["name"].lower())
 
-        rows.sort(key=lambda x: (-int(x["count"] > 0), -x["count"], x["restaurant"].name.lower()))
-
-        cookie_uid = request.cookies.get("bb_uid")
+        cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "") or ""
         active_plan = _get_active_plan(cookie_uid)
 
         return render_template(
@@ -352,11 +443,13 @@ def index(request: Request):
             "index.html",
             {
                 "feature_waiting_board": True,
-                "total_waiting": total_waiting,
-                "rows": rows,
+                "restaurants": restaurants_for_picker,
                 "selected_go_time": selected_go_time,
                 "selected_window_label": _window_label_for(selected_time),
-                "query": query_raw,
+                "selected_restaurant_id": selected_restaurant_param,
+                "ref": ref_param,
+                "user_id": cookie_uid,
+                "locked_uid": cookie_uid,
                 "msg": msg,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
@@ -375,48 +468,14 @@ def index(request: Request):
 
 @app.get("/choose", response_class=HTMLResponse)
 def choose(request: Request):
-    if not FEATURE_WAITING_BOARD:
-        return RedirectResponse(url="/", status_code=303)
-    selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
-        go_time_raw=request.query_params.get("go_time"),
-        legacy_t_raw=request.query_params.get("t"),
-        allow_past=False,
-        default_to_now=True,
-    )
-    q_raw = request.query_params.get("q", "") or ""
-    if err:
-        return RedirectResponse(
-            url=_with_query("/choose", go_time=selected_go_time, q=q_raw.strip() or None),
-            status_code=303,
-        )
-    if mapped_legacy:
-        return RedirectResponse(
-            url=_with_query("/choose", go_time=selected_go_time, q=q_raw.strip() or None),
-            status_code=303,
-        )
-
-    q = q_raw.strip().lower()
-    restaurants = engine.list_restaurants(search=q_raw.strip())
-    items = []
-    for r in restaurants:
-        if q and q not in r.name.lower():
-            continue
-        total = engine.get_waiting_total(r.id)
-        items.append({"restaurant": r, "total_waiting": total})
-    items.sort(key=lambda x: (-x["total_waiting"], x["restaurant"].name.lower()))
-
-    return render_template(
-        request,
-        "choose.html",
-        {
-            "feature_waiting_board": True,
-            "restaurants_with_counts": items,
-            "query": q_raw,
-            "selected_go_time": selected_go_time,
-            "selected_window_label": _window_label_for(selected_time),
-            "ig_username": IG_USERNAME,
-            "active_plan": _get_active_plan(request.cookies.get("bb_uid")),
-        },
+    # Legacy route: selection + publishing now lives on "/".
+    return RedirectResponse(
+        url=_with_query(
+            "/",
+            go_time=(request.query_params.get("go_time") or "").strip() or None,
+            restaurant_id=(request.query_params.get("restaurant_id") or "").strip().lower() or None,
+        ),
+        status_code=303,
     )
 
 
@@ -424,12 +483,22 @@ def choose(request: Request):
 def feed(request: Request):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    items = _build_feed_items()
+    cookie_uid = normalize_instagram(request.cookies.get("bb_uid") or "")
+    active_plan = _get_active_plan(cookie_uid)
+    own_restaurant = active_plan["restaurant"].id if active_plan else ""
+    own_go_time = active_plan["go_time"] if active_plan else ""
+    items = [
+        item
+        for item in _build_feed_items()
+        if not (own_restaurant and own_go_time and item.get("restaurant_id") == own_restaurant and item.get("go_time") == own_go_time)
+    ]
     return render_template(
         request,
         "feed.html",
         {
             "items": items,
+            "active_plan": active_plan,
+            "msg": (request.query_params.get("msg") or "").strip(),
         },
     )
 
@@ -443,6 +512,140 @@ def api_feed():
         "items": items,
         "generated_at_iso": datetime.now(LOCAL_TZ).isoformat(),
     }
+
+
+@app.post("/api/waiting/publish")
+def waiting_publish_api(request: Request, body: PublishSlotIn):
+    if not FEATURE_WAITING_BOARD:
+        raise HTTPException(status_code=404, detail="feature_disabled")
+
+    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, body.user_id)
+    if lock_err == "locked_browser_uid_mismatch":
+        locked_display = normalize_instagram(locked_uid or "")
+        detail = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        return JSONResponse(
+            status_code=409,
+            content={
+                "ok": False,
+                "error": "locked_browser_uid_mismatch",
+                "message": detail,
+                "locked_uid": locked_display,
+            },
+        )
+
+    published, err = _publish_waiting_slot(
+        restaurant_id=body.restaurant_id,
+        go_time_raw=body.go_time,
+        user_id_raw=effective_uid or body.user_id,
+        referrer_raw=body.ref,
+    )
+    if err or not published:
+        detail = "join_failed"
+        status_code = 400
+        if err == "invalid_user_id":
+            detail = "Vpiši veljavno Instagram uporabniško ime."
+        elif err == "invalid_go_time":
+            detail = "Izberi prihodnji čas odhoda."
+        elif err == "active_plan_exists":
+            detail = "Imaš že aktiven plan. Najprej ga prekliči."
+            status_code = 409
+        elif err == "restaurant_not_found":
+            detail = "Restavracija ni bila najdena."
+            status_code = 404
+        elif err == "missing_restaurant_id":
+            detail = "Izberi restavracijo."
+        return JSONResponse(
+            status_code=status_code,
+            content={"ok": False, "error": err or "join_failed", "message": detail},
+        )
+
+    if published["created_new"]:
+        message = "Plan objavljen."
+    else:
+        message = "Plan posodobljen."
+
+    resp = JSONResponse(
+        content={
+            "ok": True,
+            "message": message,
+            "restaurant_id": published["restaurant_id"],
+            "go_time": published["go_time"],
+            "window_label": published["window_label"],
+            "created_new": published["created_new"],
+            "other_count": published["other_count"],
+            "window_count": published["window_count"],
+            "user_id": published["user_id"],
+        }
+    )
+    resp.set_cookie(
+        "bb_uid",
+        value=published["user_id"],
+        max_age=60 * 60 * 24 * 30,
+        samesite="lax",
+    )
+    return resp
+
+
+@app.get("/waiting/{restaurant_id}/quick-join")
+def waiting_quick_join(
+    request: Request,
+    restaurant_id: str,
+    go_time: str,
+):
+    if not FEATURE_WAITING_BOARD:
+        return RedirectResponse(url="/", status_code=303)
+    restaurant_id_norm = (restaurant_id or "").strip().lower()
+    if not restaurant_id_norm or not engine.get_restaurant(restaurant_id_norm):
+        return RedirectResponse(url=_with_query("/feed", msg="Restavracija ni bila najdena."), status_code=303)
+    _selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
+        go_time_raw=go_time,
+        allow_past=False,
+        default_to_now=False,
+    )
+    if err or not selected_go_time:
+        msg = "Neveljaven čas."
+        if err == "past_time":
+            msg = "Izberi prihodnji čas odhoda."
+        return RedirectResponse(url=_with_query("/feed", msg=msg), status_code=303)
+
+    cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "")
+    if not cookie_uid:
+        return RedirectResponse(
+            url=_with_query(f"/done/{restaurant_id_norm}", go_time=selected_go_time, intent="join"),
+            status_code=303,
+        )
+
+    published, publish_err = _publish_waiting_slot(
+        restaurant_id=restaurant_id_norm,
+        go_time_raw=selected_go_time,
+        user_id_raw=cookie_uid,
+    )
+    if publish_err or not published:
+        msg = "Pridružitev ni uspela."
+        if publish_err == "invalid_go_time":
+            msg = "Neveljaven čas."
+        elif publish_err == "active_plan_exists":
+            msg = "Imaš že aktiven plan. Najprej ga prekliči."
+        elif publish_err == "restaurant_not_found":
+            msg = "Restavracija ni bila najdena."
+        elif publish_err == "invalid_user_id":
+            msg = "Vpiši veljavno Instagram uporabniško ime."
+        return RedirectResponse(url=_with_query("/feed", msg=msg), status_code=303)
+
+    done_url = _with_query(
+        f"/done/{published['restaurant_id']}",
+        go_time=published["go_time"],
+        u=published["user_id"],
+        created="0",
+    )
+    resp = RedirectResponse(url=done_url, status_code=303)
+    resp.set_cookie(
+        "bb_uid",
+        value=published["user_id"],
+        max_age=60 * 60 * 24 * 30,
+        samesite="lax",
+    )
+    return resp
 
 @app.post("/go", response_class=HTMLResponse)
 def go(
@@ -630,12 +833,23 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
 
     join_focus = request.query_params.get("join")
     msg = (request.query_params.get("msg") or "").strip()
-    ref = (request.query_params.get("ref") or "").strip()
+    ref = normalize_instagram(request.query_params.get("ref") or "")
     if err:
         if err == "past_time":
             msg = "Izberi prihodnji čas odhoda."
         elif err == "invalid_time":
             msg = "Neveljaven čas. Uporabi obliko HH:MM."
+        if join_focus:
+            return RedirectResponse(
+                url=_with_query(
+                    "/",
+                    restaurant_id=restaurant_id,
+                    go_time=selected_go_time,
+                    ref=ref or None,
+                    msg=msg or None,
+                ),
+                status_code=303,
+            )
         return RedirectResponse(
             url=_with_query(
                 f"/waiting/{restaurant_id}",
@@ -648,6 +862,17 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
             status_code=303,
         )
     if mapped_legacy:
+        if join_focus:
+            return RedirectResponse(
+                url=_with_query(
+                    "/",
+                    restaurant_id=restaurant_id,
+                    go_time=selected_go_time,
+                    ref=ref or None,
+                    msg=msg or None,
+                ),
+                status_code=303,
+            )
         return RedirectResponse(
             url=_with_query(
                 f"/waiting/{restaurant_id}",
@@ -656,6 +881,17 @@ def waiting_board(request: Request, restaurant_id: str, user_id: str | None = No
                 ref=ref or None,
                 msg=msg or None,
                 user_id=user_id or None,
+            ),
+            status_code=303,
+        )
+    if join_focus:
+        return RedirectResponse(
+            url=_with_query(
+                "/",
+                restaurant_id=restaurant_id,
+                go_time=selected_go_time,
+                ref=ref or None,
+                msg=msg or None,
             ),
             status_code=303,
         )
@@ -733,6 +969,8 @@ def done_screen(
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
+    intent = (request.query_params.get("intent") or "").strip().lower()
+    join_intent = intent == "join"
     selected_time, selected_go_time, mapped_legacy, err = _resolve_selected_go_time(
         go_time_raw=go_time,
         legacy_t_raw=t,
@@ -743,20 +981,66 @@ def done_screen(
         selected_time = _default_go_time()
         selected_go_time = _format_go_time(selected_time)
     if err:
-        return RedirectResponse(url=_with_query(f"/done/{restaurant_id}", go_time=selected_go_time, u=u or None), status_code=303)
+        return RedirectResponse(
+            url=_with_query(
+                f"/done/{restaurant_id}",
+                go_time=selected_go_time,
+                u=u or None,
+                intent="join" if join_intent else None,
+            ),
+            status_code=303,
+        )
     if mapped_legacy:
-        return RedirectResponse(url=_with_query(f"/done/{restaurant_id}", go_time=selected_go_time, u=u or None), status_code=303)
-    user = (u or request.cookies.get("bb_uid") or "").strip()
-    if not user:
-        return RedirectResponse(url=_with_query(f"/waiting/{restaurant_id}", go_time=selected_go_time), status_code=303)
+        return RedirectResponse(
+            url=_with_query(
+                f"/done/{restaurant_id}",
+                go_time=selected_go_time,
+                u=u or None,
+                intent="join" if join_intent else None,
+            ),
+            status_code=303,
+        )
 
-    restaurant = engine.get_restaurant(restaurant_id)
+    restaurant_id_norm = (restaurant_id or "").strip().lower()
+    restaurant = engine.get_restaurant(restaurant_id_norm)
     if not restaurant:
         raise HTTPException(status_code=404, detail="restaurant_not_found")
 
-    members = engine.get_waiting_members(restaurant_id, selected_time)
+    cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "") or ""
+    prefill_user_id = cookie_uid
+    members = engine.get_waiting_members(restaurant_id_norm, selected_time)
+    members_norm = [normalize_instagram(m or "") for m in members if normalize_instagram(m or "")]
+    known_uid_norm = normalize_instagram(prefill_user_id).lower()
+    target_candidates = [m for m in members_norm if m.lower() != known_uid_norm] if known_uid_norm else list(members_norm)
+    join_primary_other = target_candidates[0] if target_candidates else ""
+    join_other_count = max(len(target_candidates) - 1, 0)
+    if join_intent:
+        return render_template(
+            request,
+            "done.html",
+            {
+                "join_intent": True,
+                "restaurant": restaurant,
+                "go_time": selected_go_time,
+                "window_label": _window_label_for(selected_time),
+                "primary_other": "@" + join_primary_other.lstrip("@") if join_primary_other else "",
+                "other_count": join_other_count,
+                "prefill_user_id": prefill_user_id,
+                "locked_uid": prefill_user_id,
+                "join_api_payload": {"restaurant_id": restaurant_id_norm, "go_time": selected_go_time},
+                "join_target_instagram_url": f"https://instagram.com/{quote(join_primary_other)}" if join_primary_other else "",
+            },
+        )
+
+    user = (u or request.cookies.get("bb_uid") or "").strip()
+    if not user:
+        return RedirectResponse(url=_with_query(f"/waiting/{restaurant_id_norm}", go_time=selected_go_time), status_code=303)
+
     normalized_user = engine._normalize_instagram(user) if hasattr(engine, "_normalize_instagram") else user.lower()
     others = [m for m in members if (m or "").lower().lstrip("@") != normalized_user]
+    others_members = [normalize_instagram(m or "") for m in others if normalize_instagram(m or "")]
+    others_handles_display = ["@" + m for m in others_members]
+    others_instagram_links = [{"handle": "@" + m, "url": f"https://instagram.com/{quote(m)}"} for m in others_members]
     created_param = request.query_params.get("created")
     if created_param is not None:
         joined_existing = created_param == "0"
@@ -767,9 +1051,9 @@ def done_screen(
     window_label = _window_label_for(selected_time)
     instagram_url = f"https://instagram.com/{quote(primary_other)}" if primary_other else ""
     share_url = _with_query(
-        f"/waiting/{restaurant_id}",
+        "/",
         go_time=selected_go_time,
-        join="1",
+        restaurant_id=restaurant_id_norm,
         ref=user,
     )
     copy_message_for_dm = f"Hej! Vidim na BoniBuddy, da greš jest v {restaurant.name} ob {go_time_label}. A greva skupaj? 😊"
@@ -779,6 +1063,7 @@ def done_screen(
         request,
         "done.html",
         {
+            "join_intent": False,
             "restaurant": restaurant,
             "go_time": selected_go_time,
             "go_time_label": go_time_label,
@@ -787,6 +1072,9 @@ def done_screen(
             "joined_existing": joined_existing,
             "primary_other": "@" + primary_other.lstrip("@") if primary_other else "",
             "other_count": max(len(others) - 1, 0),
+            "others_members": others_members,
+            "others_handles_display": others_handles_display,
+            "others_instagram_links": others_instagram_links,
             "instagram_url": instagram_url,
             "share_url": share_url,
             "copy_message_for_dm": copy_message_for_dm,
@@ -806,38 +1094,54 @@ def waiting_join(
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    user_id = (user_id or "").strip()
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing user_id")
-    selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
+    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, user_id)
+    if lock_err == "locked_browser_uid_mismatch":
+        locked_display = normalize_instagram(locked_uid or "")
+        msg = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        back = _with_query(
+            "/",
+            go_time=go_time,
+            restaurant_id=(restaurant_id or "").strip().lower() or None,
+            ref=normalize_instagram(ref or "") or None,
+            msg=msg,
+        )
+        return RedirectResponse(url=back, status_code=303)
+
+    published, err = _publish_waiting_slot(
+        restaurant_id=restaurant_id,
         go_time_raw=go_time,
-        allow_past=False,
-        default_to_now=False,
+        user_id_raw=effective_uid or user_id,
+        referrer_raw=ref,
     )
-    if err or not selected_time or not selected_go_time:
-        msg = "Izberi prihodnji čas odhoda."
-        back = _with_query(f"/waiting/{restaurant_id}", go_time=go_time, msg=msg)
+    if err or not published:
+        msg = "Objava ni uspela."
+        if err == "invalid_user_id":
+            msg = "Vpiši veljavno Instagram uporabniško ime."
+        elif err == "invalid_go_time":
+            msg = "Izberi prihodnji čas odhoda."
+        elif err == "active_plan_exists":
+            msg = "Imaš že aktiven plan. Najprej ga prekliči."
+        elif err == "restaurant_not_found":
+            msg = "Restavracija ni bila najdena."
+        back = _with_query(
+            "/",
+            go_time=go_time,
+            restaurant_id=(restaurant_id or "").strip().lower() or None,
+            ref=normalize_instagram(ref or "") or None,
+            msg=msg,
+        )
         return RedirectResponse(url=back, status_code=303)
-    existing_plan = engine.get_user_membership(user_id)
-    if existing_plan and existing_plan.get("restaurant_id") != (restaurant_id or "").strip().lower():
-        msg = "Imaš že aktiven plan. Najprej ga prekliči."
-        back = _with_query(f"/waiting/{restaurant_id}", go_time=selected_go_time, msg=msg)
-        return RedirectResponse(url=back, status_code=303)
-    res = engine.join_slot(user_id=user_id, restaurant_id=restaurant_id, target_time=selected_time, referrer=ref)
-    if not res.get("ok"):
-        raise HTTPException(status_code=400, detail=res.get("error", "join_failed"))
-    prev_count = int(res.get("previous_count", 1))
-    created_new = prev_count == 0
+
     back = _with_query(
-        f"/done/{restaurant_id}",
-        go_time=selected_go_time,
-        u=user_id,
-        created="1" if created_new else "0",
+        "/",
+        go_time=published["go_time"],
+        restaurant_id=published["restaurant_id"],
+        ref=normalize_instagram(ref or "") or None,
     )
     resp = RedirectResponse(url=back, status_code=303)
     resp.set_cookie(
         "bb_uid",
-        value=user_id,
+        value=published["user_id"],
         max_age=60 * 60 * 24 * 30,  # 30 dni
         samesite="lax",
     )
@@ -863,13 +1167,16 @@ def waiting_leave(
         default_to_now=True,
     )
     back = _with_query(f"/waiting/{restaurant_id}", user_id=user_id, go_time=selected_go_time)
-    return RedirectResponse(url=back, status_code=303)
+    resp = RedirectResponse(url=back, status_code=303)
+    resp.delete_cookie("bb_uid", samesite="lax")
+    return resp
 
 
 @app.post("/plan/cancel")
 def plan_cancel(
     request: Request,
     restaurant_id: str | None = Form(None),
+    next_url: str | None = Form(None),
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
@@ -883,24 +1190,21 @@ def plan_cancel(
             target_restaurant = plan["restaurant"].id
     if target_restaurant:
         engine.leave_slot(user_id=user_id, restaurant_id=target_restaurant)
-    return RedirectResponse(url="/", status_code=303)
+    dest = "/"
+    if next_url and next_url.startswith("/"):
+        dest = next_url
+    resp = RedirectResponse(url=dest, status_code=303)
+    resp.delete_cookie("bb_uid", samesite="lax")
+    return resp
 
 
 @app.get("/waiting/new", response_class=HTMLResponse)
 def waiting_new(request: Request, restaurant_id: str | None = None, loc: str | None = None):
-    if not FEATURE_WAITING_BOARD:
-        return RedirectResponse(url="/", status_code=303)
-    restaurant = engine.get_restaurant(restaurant_id) if restaurant_id else None
-    loc_label = None
-    if restaurant:
-        loc_label = engine.LOCATION_LABELS.get(restaurant.location_id, restaurant.location_id)
-    elif loc:
-        loc_label = engine.LOCATION_LABELS.get(loc, loc)
-    return render_template(
-        request,
-        "new_waiting.html",
-        {
-            "restaurant": restaurant,
-            "loc_label": loc_label,
-        },
+    # Legacy route: slot creation moved to home.
+    return RedirectResponse(
+        url=_with_query(
+            "/",
+            restaurant_id=(restaurant_id or "").strip().lower() or None,
+        ),
+        status_code=303,
     )

@@ -213,36 +213,40 @@
     }
 
     /* Waiting board home */
-    .chip-row{display:flex; gap:10px; align-items:flex-start; margin:0 0 12px; flex-wrap:wrap;}
-    .chip-row--area{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling: touch; padding-bottom:4px;}
-    .search-bar{display:flex; gap:10px; align-items:center; margin:6px 0 12px;}
-    .search-bar input{flex:1; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color:var(--text); font-size:15px; box-shadow: 0 0 0 0 rgba(0,166,246,0.10);}
-    .search-bar input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
-    .search-clear{padding:11px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background: #EAF7FD; color: #007FBF; cursor:pointer; font-weight:700;}
-    .search-clear:hover{background: #d7f0fc; border-color: #92DBF3;}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1.5px solid #92DBF3; background: transparent; color:#007FBF; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap; box-shadow: none;}
     .chip--active{border: none; background: var(--accent); color:#ffffff; box-shadow: none;}
     .time-row{display:flex; gap:10px; align-items:center; margin:6px 0 4px;}
     .time-input{width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px;}
     .time-input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
-    .chip-stack{display:flex; flex-direction:column; align-items:center; gap:8px;}
     .time-caption{font-size:12px; color:#8A9AA6; font-weight:400; margin-top:2px;}
-    .restaurant-list{flex:1; min-height:0; overflow-y:auto; padding-right:6px; padding-bottom:12px; -webkit-overflow-scrolling: touch;}
-    .list{display:flex; flex-direction:column; gap:10px;}
-    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #ffffff; color: var(--text); text-decoration:none; box-shadow: 0 8px 20px rgba(0,166,246,0.08);}
-    .rest-row{background: #F6FCFF; border-color: rgba(0,166,246,0.14); box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
-    .rest-row--active{background: #E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);}
-    .rest-info{flex:1;}
-    .rest-name{font-size:15px; font-weight:400;}
-    .rest-sub{font-size:13px; color: var(--muted); margin-top:2px;}
-    .who{font-size:13px; color: var(--muted); margin-top:6px;}
-    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7;}
-    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);}
     .muted{color: var(--muted);}
-    .suggest-cta{margin-top:14px; text-align:left;}
-    .suggest-cta__link{display:inline-flex; align-items:center; gap:6px; color: var(--accent); text-decoration:none; font-weight:700; font-size:14px;}
-    .suggest-cta__link:hover{color: #005f8f; text-decoration: underline;}
-    .suggest-cta__hint{font-size:12px; color: var(--muted); margin-top:4px;}
+    .slot-form{display:flex; flex-direction:column; gap:10px; margin-top:8px;}
+    .field-title{margin-top:6px; margin-bottom:2px; color:#111111; font-weight:700; font-size:14px;}
+    .picker-wrap{position:relative;}
+    .picker-input{width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px;}
+    .picker-input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
+    .suggestions{margin-top:8px; border:1px solid rgba(0,166,246,0.18); border-radius:12px; background:#ffffff; max-height:220px; overflow-y:auto; box-shadow:0 12px 24px rgba(0,166,246,0.10);}
+    .suggestion-btn{width:100%; text-align:left; border:0; border-bottom:1px solid rgba(0,166,246,0.12); background:#ffffff; padding:10px 12px; cursor:pointer;}
+    .suggestion-btn:last-child{border-bottom:none;}
+    .suggestion-btn:hover{background:#EAF7FD;}
+    .suggestion-name{font-size:14px; font-weight:600;}
+    .suggestion-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+    .selected-card{margin-top:8px; border:1px solid rgba(0,166,246,0.20); border-radius:14px; padding:12px; background:#EAF7FD; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .selected-card[hidden]{display:none !important;}
+    .publish-status[hidden], .suggestions[hidden], .hint[hidden]{display:none !important;}
+    .selected-name{font-size:15px; font-weight:700;}
+    .selected-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+    .change-btn{border:1px solid rgba(0,166,246,0.35); background:#ffffff; color:#007FBF; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
+    .change-btn:hover{background:#dff3fd;}
+    .ig-input-wrap{position:relative;}
+    input.ig-input{width:100%; padding:12px 12px 12px 44px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px;}
+    input.ig-input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
+    .ig-input-wrap .ig-icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); pointer-events:none;}
+    .hint{font-size:12px; color:var(--muted);}
+    .hint--error{color:#991b1b;}
+    .publish-status{border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px; font-size:13px;}
+    .publish-status--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
+    .btn[disabled]{background:#9FCBDE; border-color:#9FCBDE; color:#ffffff; cursor:not-allowed;}
     .live-feed-icon{position:absolute; top:14px; right:14px; display:inline-flex; justify-content:center; align-items:center; width:40px; height:40px; border-radius:50%; border:1.25px solid var(--accent); background: rgba(0,166,246,0.08); color: var(--accent); text-decoration:none; box-shadow:none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;}
     .live-feed-icon:hover, .live-feed-icon:focus{background: var(--accent); color:#ffffff; box-shadow: 0 8px 18px rgba(0,166,246,0.25); outline:none;}
     .live-feed-icon:active{transform: scale(0.97); background:#008ed5; color:#ffffff;}
@@ -299,46 +303,42 @@
       {% include "_active_plan.html" %}
       {% if msg %}<div class="error" style="margin-top:4px;">{{ msg }}</div>{% endif %}
 
-      <div class="muted" style="margin-top:14px; margin-bottom:6px; color:#111111; font-weight:700;">Kdaj greš</div>
-      <form id="goTimeForm" class="time-row" method="get" action="/">
-        <input class="time-input" type="time" name="go_time" value="{{ selected_go_time }}" step="300" required>
-        <input type="hidden" name="q" value="{{ query }}">
-      </form>
-      <div class="time-caption">Aktivno okno: {{ selected_window_label }}</div>
+      <form id="publishForm" class="slot-form" novalidate>
+        <input type="hidden" id="selectedRestaurantId" name="restaurant_id" value="{{ selected_restaurant_id }}">
+        <input type="hidden" id="refInput" name="ref" value="{{ ref }}">
 
-      <div class="muted" style="margin-top:10px; margin-bottom:6px; color:#111111; font-weight:700;">Poišči kam greš</div>
-      <form class="search-bar" method="get" action="/" style="margin-bottom:18px;">
-        <input type="hidden" name="go_time" value="{{ selected_go_time }}">
-        <input id="restSearch" type="text" name="q" value="{{ query }}" placeholder="Išči po imenu (Ljubljana)" autocomplete="off">
-        {% if query %}
-          <button type="button" class="search-clear" aria-label="Počisti iskanje"
-                  onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
-        {% endif %}
-      </form>
+        <div class="field-title">Kdaj greš</div>
+        <div class="time-row">
+          <input id="goTimeInput" class="time-input" type="time" name="go_time" value="{{ selected_go_time }}" step="300" required>
+        </div>
+        <div class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></div>
 
-      <div class="restaurant-list">
-        {% if rows %}
-          <div id="restaurantList" class="list">
-            {% for item in rows %}
-              {% set is_active = item.count > 0 %}
-              <a class="rest-row {% if is_active %}rest-row--active{% endif %}" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1" style="{% if is_active %}cursor:default;{% endif %}" data-name="{{ item.restaurant.name|lower }}" data-subtitle="{{ (item.restaurant.address or item.restaurant.city)|lower }}">
-                <div class="rest-info">
-                  <div class="rest-name">{{ item.restaurant.name }}</div>
-                  <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
-                  {% if is_active %}
-                    <div class="who" aria-hidden="true">&nbsp;</div>
-                  {% endif %}
-                </div>
-                <div class="badge {% if is_active %}badge--active{% endif %}">
-                  {% if item.count == 1 %}1 gre{% elif item.count == 0 %}0 gre{% else %}{{ item.count }} gredo{% endif %}
-                </div>
-              </a>
-            {% endfor %}
+        <div class="field-title">Poišči kam greš</div>
+        <div id="restaurantInputWrap" class="picker-wrap">
+          <input id="restSearchInput" class="picker-input" type="text" placeholder="Vpiši ime restavracije" autocomplete="off">
+        </div>
+        <div id="restaurantSuggestions" class="suggestions" hidden></div>
+        <div id="restaurantNoResults" class="hint" hidden>Ni zadetkov.</div>
+
+        <div id="selectedRestaurantCard" class="selected-card" hidden>
+          <div>
+            <div id="selectedRestaurantName" class="selected-name"></div>
+            <div id="selectedRestaurantSub" class="selected-sub"></div>
           </div>
-          <div id="noResults" class="muted" style="display:none; margin-top:8px;">Ni zadetkov.</div>
-        {% endif %}
+          <button id="changeRestaurantBtn" type="button" class="change-btn">Spremeni</button>
+        </div>
 
-      </div>
+        <div class="field-title">Instagram</div>
+        <div class="ig-input-wrap">
+          <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+          </svg>
+          <input id="userIdInput" class="ig-input" type="text" name="user_id" placeholder="tvoj Instagram" value="{{ user_id }}" required>
+        </div>
+        <div id="igHint" class="hint">Dovoljeni znaki: črke, številke, pika in podčrtaj.</div>
+        <button id="publishBtn" class="btn" type="submit" disabled>Potrdi</button>
+        <div id="publishStatus" class="publish-status" hidden></div>
+      </form>
     {% else %}
       <div class="logo-placeholder" aria-hidden="true">
         <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -375,18 +375,8 @@
       <h1 style="margin-bottom:6px;">Greš na bone</h1>
       <a class="chip chip--active" href="/">Nazaj na začetek</a>
     {% endif %}
-    <div class="foot">
-      <a class="ig-link" data-ig-link target="_blank" rel="noopener noreferrer">
-        <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
-          <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
-        </svg>
-        <span>Follow us on Instagram</span>
-      </a>
-    </div>
   </div>
 <script>
-  const INSTAGRAM_URL = 'https://www.instagram.com/boni_buddy/';
-
   // Service worker (best-effort)
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -399,57 +389,301 @@
   // Waiting-board live filter
   {% if feature_waiting_board %}
   (function() {
-    const goTimeInput = document.querySelector('#goTimeForm input[name="go_time"]');
-    const goTimeForm = document.getElementById('goTimeForm');
-    if (goTimeInput && goTimeForm) {
-      goTimeInput.addEventListener('change', () => goTimeForm.submit());
+    const restaurants = {{ restaurants | tojson }};
+    const INSTAGRAM_RE = /^[A-Za-z0-9._]{1,30}$/;
+    const DEFAULT_HINT = 'Dovoljeni znaki: črke, številke, pika in podčrtaj.';
+    const LOCKED_UID = {{ (locked_uid or "") | tojson }};
+    const LOCKED_HINT = LOCKED_UID ? `Brskalnik je trenutno vezan na @${LOCKED_UID}.` : '';
+
+    const form = document.getElementById('publishForm');
+    const goTimeInput = document.getElementById('goTimeInput');
+    const windowLabel = document.getElementById('windowLabel');
+    const selectedRestaurantIdInput = document.getElementById('selectedRestaurantId');
+    const searchInput = document.getElementById('restSearchInput');
+    const suggestions = document.getElementById('restaurantSuggestions');
+    const noResults = document.getElementById('restaurantNoResults');
+    const inputWrap = document.getElementById('restaurantInputWrap');
+    const selectedCard = document.getElementById('selectedRestaurantCard');
+    const selectedName = document.getElementById('selectedRestaurantName');
+    const selectedSub = document.getElementById('selectedRestaurantSub');
+    const changeBtn = document.getElementById('changeRestaurantBtn');
+    const userIdInput = document.getElementById('userIdInput');
+    const publishBtn = document.getElementById('publishBtn');
+    const publishStatus = document.getElementById('publishStatus');
+    const refInput = document.getElementById('refInput');
+    const igHint = document.getElementById('igHint');
+    if (!form || !goTimeInput || !windowLabel || !selectedRestaurantIdInput || !searchInput || !suggestions || !selectedCard || !selectedName || !selectedSub || !changeBtn || !userIdInput || !publishBtn || !publishStatus || !refInput || !igHint || !inputWrap || !noResults) return;
+
+    let selectedRestaurant = restaurants.find(item => item.id === selectedRestaurantIdInput.value) || null;
+    let isSubmitting = false;
+    let searchEventSent = false;
+
+    function normalizeInstagram(value) {
+      return (value || '').trim().replace(/^@+/, '');
     }
 
-    const searchInput = document.getElementById('restSearch');
-    const list = document.getElementById('restaurantList');
-    const noResults = document.getElementById('noResults');
-    if (!searchInput || !list) return;
+    function isValidInstagram(value) {
+      const normalized = normalizeInstagram(value);
+      return INSTAGRAM_RE.test(normalized);
+    }
 
-    const items = Array.from(list.querySelectorAll('[data-name]'));
+    function windowLabelFrom(goTime) {
+      if (!goTime || !goTime.includes(':')) return '';
+      const parts = goTime.split(':');
+      const hh = Number(parts[0]);
+      const mm = Number(parts[1]);
+      if (Number.isNaN(hh) || Number.isNaN(mm)) return '';
+      const startMins = hh * 60 + mm;
+      const endMins = (startMins + 30) % (24 * 60);
+      const start = `${String(Math.floor(startMins / 60)).padStart(2, '0')}:${String(startMins % 60).padStart(2, '0')}`;
+      const end = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+      return `${start}\u2013${end}`;
+    }
 
-    function applyFilter() {
-      const q = searchInput.value.trim().toLowerCase();
-      let visible = 0;
-      items.forEach(item => {
-        const name = item.dataset.name || '';
-        const sub = item.dataset.subtitle || '';
-        const match = !q || name.includes(q) || sub.includes(q);
-        item.style.display = match ? '' : 'none';
-        if (match) visible++;
+    function setStatus(message, isError) {
+      if (!message) {
+        publishStatus.hidden = true;
+        publishStatus.textContent = '';
+        publishStatus.classList.remove('publish-status--error');
+        return;
+      }
+      publishStatus.hidden = false;
+      publishStatus.textContent = message;
+      publishStatus.classList.toggle('publish-status--error', !!isError);
+    }
+
+    function updateIgHint() {
+      const value = userIdInput.value.trim();
+      const normalized = normalizeInstagram(value);
+      if (!value) {
+        igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
+        igHint.classList.remove('hint--error');
+        return;
+      }
+      if (!isValidInstagram(value)) {
+        igHint.textContent = 'Vpiši veljavno Instagram uporabniško ime.';
+        igHint.classList.add('hint--error');
+        return;
+      }
+      if (LOCKED_UID && normalized.toLowerCase() !== LOCKED_UID.toLowerCase()) {
+        igHint.textContent = `${LOCKED_HINT} Za zamenjavo najprej prekliči trenutni plan.`;
+        igHint.classList.add('hint--error');
+        return;
+      }
+      igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
+      igHint.classList.remove('hint--error');
+    }
+
+    function updateButtonState() {
+      const hasTime = !!(goTimeInput.value || '').trim();
+      const hasRestaurant = !!(selectedRestaurant && selectedRestaurant.id);
+      const hasValidIg = isValidInstagram(userIdInput.value);
+      publishBtn.disabled = isSubmitting || !hasTime || !hasRestaurant || !hasValidIg;
+      if (!isSubmitting) {
+        publishBtn.textContent = 'Potrdi';
+      }
+    }
+
+    function renderSelectedCard() {
+      if (!selectedRestaurant) {
+        selectedCard.hidden = true;
+        inputWrap.hidden = false;
+        selectedRestaurantIdInput.value = '';
+        updateButtonState();
+        return;
+      }
+      selectedName.textContent = selectedRestaurant.name || '';
+      selectedSub.textContent = selectedRestaurant.subtitle || '';
+      selectedCard.hidden = false;
+      inputWrap.hidden = true;
+      selectedRestaurantIdInput.value = selectedRestaurant.id;
+      suggestions.hidden = true;
+      noResults.hidden = true;
+      updateButtonState();
+    }
+
+    function renderSuggestions() {
+      if (selectedRestaurant) {
+        suggestions.hidden = true;
+        noResults.hidden = true;
+        return;
+      }
+      const q = (searchInput.value || '').trim().toLowerCase();
+      suggestions.innerHTML = '';
+      if (!q) {
+        suggestions.hidden = true;
+        noResults.hidden = true;
+        return;
+      }
+      const filtered = restaurants
+        .filter(item => {
+          const name = (item.name || '').toLowerCase();
+          const sub = (item.subtitle || '').toLowerCase();
+          return name.includes(q) || sub.includes(q);
+        })
+        .sort((a, b) => {
+          const aPrefix = (a.name || '').toLowerCase().startsWith(q) ? 0 : 1;
+          const bPrefix = (b.name || '').toLowerCase().startsWith(q) ? 0 : 1;
+          if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+          return (a.name || '').localeCompare((b.name || ''), 'sl');
+        })
+        .slice(0, 8);
+
+      if (filtered.length === 0) {
+        suggestions.hidden = true;
+        noResults.hidden = false;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'suggestion-btn';
+        btn.dataset.id = item.id;
+        const nameEl = document.createElement('div');
+        nameEl.className = 'suggestion-name';
+        nameEl.textContent = item.name || '';
+        const subEl = document.createElement('div');
+        subEl.className = 'suggestion-sub';
+        subEl.textContent = item.subtitle || '';
+        btn.appendChild(nameEl);
+        btn.appendChild(subEl);
+        btn.addEventListener('click', () => {
+          selectedRestaurant = item;
+          searchInput.value = '';
+          renderSelectedCard();
+          syncUrlState();
+        });
+        suggestions.appendChild(btn);
       });
-      if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+      noResults.hidden = true;
+      suggestions.hidden = false;
     }
 
-  searchInput.addEventListener('input', applyFilter);
-  applyFilter();
-})();
-
-// GA: search_used — first non-empty search interaction (once per load)
-(function() {
-  const input = document.getElementById('restSearch');
-  if (!input) return;
-  let sent = false;
-  input.addEventListener('input', () => {
-    if (sent) return;
-    const len = (input.value || '').trim().length;
-    if (len === 0) return;
-    sent = true;
-    if (typeof window.gtag === 'function') {
-      gtag('event', 'search_used', { query_length: len });
+    function syncUrlState() {
+      try {
+        const url = new URL(window.location.href);
+        const timeValue = (goTimeInput.value || '').trim();
+        if (timeValue) url.searchParams.set('go_time', timeValue);
+        else url.searchParams.delete('go_time');
+        if (selectedRestaurant && selectedRestaurant.id) url.searchParams.set('restaurant_id', selectedRestaurant.id);
+        else url.searchParams.delete('restaurant_id');
+        const refValue = (refInput.value || '').trim();
+        if (refValue) url.searchParams.set('ref', refValue);
+        else url.searchParams.delete('ref');
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {}
     }
-  });
-})();
 
-// Set Instagram link from single constant
-(function() {
-  const igLinks = document.querySelectorAll('[data-ig-link]');
-  igLinks.forEach(link => { link.href = INSTAGRAM_URL; });
-})();
+    goTimeInput.addEventListener('change', () => {
+      windowLabel.textContent = windowLabelFrom(goTimeInput.value) || windowLabel.textContent;
+      syncUrlState();
+      updateButtonState();
+    });
+
+    searchInput.addEventListener('focus', renderSuggestions);
+    searchInput.addEventListener('input', () => {
+      if (!searchEventSent) {
+        const len = (searchInput.value || '').trim().length;
+        if (len > 0) {
+          searchEventSent = true;
+          if (typeof window.gtag === 'function') {
+            gtag('event', 'search_used', { query_length: len });
+          }
+        }
+      }
+      renderSuggestions();
+    });
+    searchInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!selectedRestaurant) suggestions.hidden = true;
+      }, 120);
+    });
+
+    changeBtn.addEventListener('click', () => {
+      selectedRestaurant = null;
+      setStatus('', false);
+      renderSelectedCard();
+      searchInput.value = '';
+      searchInput.focus();
+      syncUrlState();
+      renderSuggestions();
+    });
+
+    userIdInput.addEventListener('input', () => {
+      updateIgHint();
+      updateButtonState();
+    });
+    userIdInput.addEventListener('blur', () => {
+      userIdInput.value = normalizeInstagram(userIdInput.value);
+      updateIgHint();
+      updateButtonState();
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (isSubmitting) return;
+      const normalizedUser = normalizeInstagram(userIdInput.value);
+      userIdInput.value = normalizedUser;
+      updateIgHint();
+      updateButtonState();
+      if (publishBtn.disabled || !selectedRestaurant) return;
+
+      isSubmitting = true;
+      publishBtn.textContent = 'Objavljam...';
+      updateButtonState();
+      setStatus('', false);
+
+      try {
+        const res = await fetch('/api/waiting/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurant_id: selectedRestaurant.id,
+            go_time: goTimeInput.value,
+            user_id: normalizedUser,
+            ref: (refInput.value || '').trim() || null,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          const lockedMismatch = data.error === 'locked_browser_uid_mismatch';
+          setStatus((lockedMismatch && data.message) ? data.message : (data.message || 'Objava ni uspela.'), true);
+          return;
+        }
+
+        if (typeof window.gtag === 'function') {
+          gtag('event', 'slot_filled', {
+            restaurant_id: selectedRestaurant.id,
+            go_time: goTimeInput.value,
+          });
+        }
+        userIdInput.value = data.user_id || normalizedUser;
+        if (data.window_label) windowLabel.textContent = data.window_label;
+        renderSelectedCard();
+        setStatus(data.message || 'Plan objavljen.', false);
+        syncUrlState();
+      } catch (e) {
+        setStatus('Prišlo je do napake. Poskusi znova.', true);
+      } finally {
+        isSubmitting = false;
+        updateButtonState();
+      }
+    });
+
+    if (!windowLabel.textContent.trim()) {
+      const label = windowLabelFrom(goTimeInput.value);
+      if (label) windowLabel.textContent = label;
+    }
+    renderSelectedCard();
+    if (!selectedRestaurant) {
+      suggestions.hidden = true;
+      noResults.hidden = true;
+    }
+    updateIgHint();
+    updateButtonState();
+    syncUrlState();
+  })();
 {% endif %}
 </script>
 </body>

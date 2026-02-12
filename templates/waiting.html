@@ -211,45 +211,33 @@
           <h1>📍 {{ restaurant.name }}</h1>
           {% if msg %}<div class="error" style="margin-top:0;">{{ msg }}</div>{% endif %}
 
-          <form method="post" action="/waiting/join" id="joinForm" style="display:flex; flex-direction:column; gap:0; min-height:0;">
-            <input type="hidden" name="restaurant_id" value="{{ restaurant_id }}">
-            <input type="hidden" id="refInput" name="ref" value="{{ request.query_params.get('ref') or '' }}">
+          <label class="label" for="goTimePicker" style="margin-top:12px;">Kdaj greš</label>
+          <div class="time-picker-row">
+            <input type="time" id="goTimePicker" name="go_time" value="{{ selected_go_time }}" step="300" required>
+          </div>
+          <p class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></p>
 
-            <label class="label" for="goTimePicker" style="margin-top:12px;">Kdaj greš</label>
-            <div class="time-picker-row">
-              <input type="time" id="goTimePicker" name="go_time" value="{{ selected_go_time }}" step="300" required>
+          <div class="window-card">
+            <div class="window-header">
+              <span class="window-title">Kdo gre v tem času</span>
+              <span class="badge {% if selected_count > 0 %}badge--active{% endif %}" id="selectedCountBadge">
+                {% if selected_count == 1 %}1 gre{% elif selected_count == 0 %}0 gre{% else %}{{ selected_count }} gredo{% endif %}
+              </span>
             </div>
-            <p class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></p>
+            <div class="window-members" id="selectedMembers">
+              {% if selected_members %}
+                {%- set handles = selected_members[:2] -%}
+                {%- set extra = selected_members|length - handles|length -%}
+                {%- for m in handles -%}
+                  @{{ m }}{% if not loop.last %}, {% endif %}
+                {%- endfor -%}
+                {% if extra > 0 %} +{{ extra }}{% endif %}
+              {% endif %}
+            </div>
+          </div>
 
-            <div class="window-card">
-              <div class="window-header">
-                <span class="window-title">Kdo gre v tem času</span>
-                <span class="badge {% if selected_count > 0 %}badge--active{% endif %}" id="selectedCountBadge">
-                  {% if selected_count == 1 %}1 gre{% elif selected_count == 0 %}0 gre{% else %}{{ selected_count }} gredo{% endif %}
-                </span>
-              </div>
-              <div class="window-members" id="selectedMembers">
-                {% if selected_members %}
-                  {%- set handles = selected_members[:2] -%}
-                  {%- set extra = selected_members|length - handles|length -%}
-                  {%- for m in handles -%}
-                    @{{ m }}{% if not loop.last %}, {% endif %}
-                  {%- endfor -%}
-                  {% if extra > 0 %} +{{ extra }}{% endif %}
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="input-row">
-              <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
-              </svg>
-              <input id="userIdInput" name="user_id" type="text" placeholder="tvoj Instagram" value="{{ user_id }}" required>
-            </div>
-            <div class="cta-row">
-              <button type="submit">Potrdi</button>
-            </div>
-          </form>
+          <div class="muted" style="font-size:13px; margin-bottom:10px;">Objavo plana narediš na domači strani.</div>
+          <a class="btn" id="createOnHomeBtn" href="/?restaurant_id={{ restaurant_id | urlencode }}&go_time={{ selected_go_time | urlencode }}{% if request.query_params.get('ref') %}&ref={{ request.query_params.get('ref') | urlencode }}{% endif %}">Ustvari plan na domači strani</a>
 
           {% if user_go_time %}
             <div class="status">
@@ -265,17 +253,20 @@
           <a class="link" href="/" style="display:inline-block; margin-top:16px;">Nazaj na lokacije</a>
           <script>
             (function() {
-              const focus = {{ 'true' if join_focus else 'false' }};
-              if (focus) {
-                const el = document.getElementById('userIdInput');
-                if (el) { setTimeout(() => el.focus(), 50); }
-              }
               const picker = document.getElementById('goTimePicker');
               const leaveInput = document.getElementById('leaveGoTimeInput');
+              const createLink = document.getElementById('createOnHomeBtn');
               if (picker) {
                 if (leaveInput) leaveInput.value = picker.value;
                 picker.addEventListener('change', () => {
                   if (leaveInput) leaveInput.value = picker.value;
+                  if (createLink) {
+                    try {
+                      const url = new URL(createLink.href, window.location.origin);
+                      url.searchParams.set('go_time', picker.value);
+                      createLink.href = url.pathname + url.search;
+                    } catch (e) {}
+                  }
                   try {
                     const url = new URL(window.location.href);
                     url.searchParams.set('go_time', picker.value);
@@ -326,23 +317,6 @@
               refresh();
               picker.addEventListener('change', refresh);
               setInterval(refresh, 5000);
-            })();
-
-            // GA: slot_filled — fire once when join form is submitted
-            (function() {
-              const form = document.getElementById('joinForm');
-              if (!form) return;
-              let sent = false;
-              form.addEventListener('submit', () => {
-                if (sent || typeof window.gtag !== 'function') return;
-                sent = true;
-                const restaurantId = form.querySelector('input[name=\"restaurant_id\"]')?.value || undefined;
-                const goTime = form.querySelector('input[name=\"go_time\"]')?.value || undefined;
-                gtag('event', 'slot_filled', {
-                  restaurant_id: restaurantId,
-                  go_time: goTime,
-                });
-              });
             })();
           </script>
         {% else %}
