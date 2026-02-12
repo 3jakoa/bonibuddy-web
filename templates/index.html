@@ -392,6 +392,8 @@
     const restaurants = {{ restaurants | tojson }};
     const INSTAGRAM_RE = /^[A-Za-z0-9._]{1,30}$/;
     const DEFAULT_HINT = 'Dovoljeni znaki: črke, številke, pika in podčrtaj.';
+    const LOCKED_UID = {{ (locked_uid or "") | tojson }};
+    const LOCKED_HINT = LOCKED_UID ? `Brskalnik je trenutno vezan na @${LOCKED_UID}.` : '';
 
     const form = document.getElementById('publishForm');
     const goTimeInput = document.getElementById('goTimeInput');
@@ -452,8 +454,9 @@
 
     function updateIgHint() {
       const value = userIdInput.value.trim();
+      const normalized = normalizeInstagram(value);
       if (!value) {
-        igHint.textContent = DEFAULT_HINT;
+        igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
         igHint.classList.remove('hint--error');
         return;
       }
@@ -462,7 +465,12 @@
         igHint.classList.add('hint--error');
         return;
       }
-      igHint.textContent = DEFAULT_HINT;
+      if (LOCKED_UID && normalized.toLowerCase() !== LOCKED_UID.toLowerCase()) {
+        igHint.textContent = `${LOCKED_HINT} Za zamenjavo najprej prekliči trenutni plan.`;
+        igHint.classList.add('hint--error');
+        return;
+      }
+      igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
       igHint.classList.remove('hint--error');
     }
 
@@ -639,7 +647,8 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
-          setStatus(data.message || 'Objava ni uspela.', true);
+          const lockedMismatch = data.error === 'locked_browser_uid_mismatch';
+          setStatus((lockedMismatch && data.message) ? data.message : (data.message || 'Objava ni uspela.'), true);
           return;
         }
 

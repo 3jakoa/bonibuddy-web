@@ -264,6 +264,16 @@ def _normalize_and_validate_instagram(raw: str) -> str | None:
     return handle
 
 
+def _resolve_browser_uid_lock(request: Request, submitted_uid_raw: str) -> tuple[str | None, str | None, str | None, str | None]:
+    locked_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "")
+    submitted_uid = _normalize_and_validate_instagram(submitted_uid_raw)
+    if not submitted_uid:
+        return locked_uid, submitted_uid, None, "invalid_user_id"
+    if locked_uid and submitted_uid.lower() != locked_uid.lower():
+        return locked_uid, submitted_uid, None, "locked_browser_uid_mismatch"
+    return locked_uid, submitted_uid, (locked_uid or submitted_uid), None
+
+
 def _get_active_plan(user_id: str | None) -> dict | None:
     if not user_id:
         return None
@@ -424,7 +434,7 @@ def index(request: Request):
         ]
         restaurants_for_picker.sort(key=lambda x: x["name"].lower())
 
-        cookie_uid = normalize_instagram(request.cookies.get("bb_uid") or "")
+        cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "") or ""
         active_plan = _get_active_plan(cookie_uid)
 
         return render_template(
@@ -438,6 +448,7 @@ def index(request: Request):
                 "selected_restaurant_id": selected_restaurant_param,
                 "ref": ref_param,
                 "user_id": cookie_uid,
+                "locked_uid": cookie_uid,
                 "msg": msg,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
@@ -503,14 +514,28 @@ def api_feed():
 
 
 @app.post("/api/waiting/publish")
-def waiting_publish_api(body: PublishSlotIn):
+def waiting_publish_api(request: Request, body: PublishSlotIn):
     if not FEATURE_WAITING_BOARD:
         raise HTTPException(status_code=404, detail="feature_disabled")
+
+    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, body.user_id)
+    if lock_err == "locked_browser_uid_mismatch":
+        locked_display = normalize_instagram(locked_uid or "")
+        detail = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        return JSONResponse(
+            status_code=409,
+            content={
+                "ok": False,
+                "error": "locked_browser_uid_mismatch",
+                "message": detail,
+                "locked_uid": locked_display,
+            },
+        )
 
     published, err = _publish_waiting_slot(
         restaurant_id=body.restaurant_id,
         go_time_raw=body.go_time,
-        user_id_raw=body.user_id,
+        user_id_raw=effective_uid or body.user_id,
         referrer_raw=body.ref,
     )
     if err or not published:
@@ -1007,10 +1032,23 @@ def waiting_join(
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
+    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, user_id)
+    if lock_err == "locked_browser_uid_mismatch":
+        locked_display = normalize_instagram(locked_uid or "")
+        msg = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        back = _with_query(
+            "/",
+            go_time=go_time,
+            restaurant_id=(restaurant_id or "").strip().lower() or None,
+            ref=normalize_instagram(ref or "") or None,
+            msg=msg,
+        )
+        return RedirectResponse(url=back, status_code=303)
+
     published, err = _publish_waiting_slot(
         restaurant_id=restaurant_id,
         go_time_raw=go_time,
-        user_id_raw=user_id,
+        user_id_raw=effective_uid or user_id,
         referrer_raw=ref,
     )
     if err or not published:
@@ -1067,7 +1105,9 @@ def waiting_leave(
         default_to_now=True,
     )
     back = _with_query(f"/waiting/{restaurant_id}", user_id=user_id, go_time=selected_go_time)
-    return RedirectResponse(url=back, status_code=303)
+    resp = RedirectResponse(url=back, status_code=303)
+    resp.delete_cookie("bb_uid", samesite="lax")
+    return resp
 
 
 @app.post("/plan/cancel")
@@ -1091,7 +1131,9 @@ def plan_cancel(
     dest = "/"
     if next_url and next_url.startswith("/"):
         dest = next_url
-    return RedirectResponse(url=dest, status_code=303)
+    resp = RedirectResponse(url=dest, status_code=303)
+    resp.delete_cookie("bb_uid", samesite="lax")
+    return resp
 
 
 @app.get("/waiting/new", response_class=HTMLResponse)
