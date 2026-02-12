@@ -15,6 +15,9 @@
       --border: rgba(0,166,246,0.18);
       --accent: #00A6F6;
       --accent-light: #92DBF3;
+      --danger: #dc2626;
+      --danger-border: rgba(220,38,38,0.32);
+      --danger-bg: rgba(220,38,38,0.08);
       --radius: 18px;
       --shadow: 0 12px 32px rgba(0,166,246,0.10);
     }
@@ -45,7 +48,7 @@
       border:1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding:22px 20px calc(24px + env(safe-area-inset-bottom));
+      padding:18px 18px calc(20px + env(safe-area-inset-bottom));
       backdrop-filter: blur(10px);
       max-height: calc(100dvh - 48px - env(safe-area-inset-bottom));
       display:flex;
@@ -53,14 +56,14 @@
       overflow:hidden;
       min-height:0;
     }
-    h1{margin:12px 0 6px; font-size:22px; text-align:center;}
+    h1{margin:6px 0 4px; font-size:24px; line-height:1.15; text-align:center;}
     .logo-placeholder{
-      width: 92px;
-      height: 92px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
       background: #EAF7FD;
       overflow: hidden;
-      margin: 0 auto 10px;
+      margin: 0 auto 6px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -71,20 +74,100 @@
       height: 100%;
       display: block;
     }
-    .cta-stack{display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:12px;}
-    .btn{display:inline-flex; justify-content:center; align-items:center; min-width:220px; padding:14px 18px; border-radius:14px; border:1px solid var(--accent); background: var(--accent); color:#ffffff; font-weight:700; text-decoration:none; transition: background 0.2s ease; box-shadow: 0 6px 16px rgba(0,166,246,0.12);}
+    .cta-stack{display:flex; flex-direction:column; gap:7px; align-items:center; margin-top:10px; width:100%; max-width:320px;}
+    .btn{
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      gap:8px;
+      width:100%;
+      min-width:200px;
+      max-width:320px;
+      padding:13px 16px;
+      border-radius:14px;
+      border:1px solid var(--accent);
+      background: var(--accent);
+      color:#ffffff;
+      font-weight:700;
+      text-decoration:none;
+      transition: background 0.2s ease, transform 0.12s ease;
+      box-shadow: 0 6px 16px rgba(0,166,246,0.12);
+    }
     .btn:hover{background:#008ed5;}
-    .btn-secondary{display:inline-flex; justify-content:center; align-items:center; min-width:220px; padding:12px 16px; border-radius:12px; border:1px solid var(--accent); background: #ffffff; color:var(--accent); font-weight:600; text-decoration:none; transition: background 0.2s ease, color 0.2s ease;}
-    .btn-secondary:hover{background: color-mix(in srgb, var(--accent-light) 25%, #ffffff 75%); color:#005f8f;}
+    .btn svg{
+      width:16px;
+      height:16px;
+      fill: currentColor;
+      flex-shrink:0;
+    }
+    .btn-text{
+      display:inline-block;
+      max-width:220px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      vertical-align:bottom;
+    }
     .link{display:inline-block; margin-top:16px; color:var(--accent); text-decoration:none; font-size:13px;}
     .link:hover{text-decoration:underline; color:#005f8f;}
     .footer-link{display:flex; justify-content:flex-start;}
-    .card-body{display:flex; flex-direction:column; gap:12px; align-items:center; min-height:0;}
-    .body-text{font-size:14px; color: var(--muted); text-align:center; line-height:1.5; margin:0 4px 6px;}
-    .who-card{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.20); background:#EAF7FD; border-radius:12px; padding:10px 12px; text-align:center;}
-    .who-label{font-size:12px; color:var(--muted);}
-    .who-handle{margin-top:4px; font-size:18px; font-weight:700; color:var(--text);}
-    .field-title{margin-top:4px; margin-bottom:2px; color:#111111; font-weight:700; font-size:14px; width:100%; max-width:320px;}
+    .actions-secondary{
+      width:100%;
+      max-width:320px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      margin-top:10px;
+      font-size:13px;
+    }
+    .actions-secondary form{margin:0;}
+    .action-link{
+      border:0;
+      background:transparent;
+      padding:0;
+      margin:0;
+      color:var(--accent);
+      font-size:13px;
+      line-height:1.3;
+      text-decoration:none;
+      cursor:pointer;
+      font-weight:500;
+    }
+    .action-link:hover{text-decoration:underline; color:#005f8f;}
+    .action-link--danger{color:var(--danger);}
+    .action-link--danger:hover{color:#b91c1c;}
+    .card-body{display:flex; flex-direction:column; gap:10px; align-items:center; min-height:0;}
+    .status-pill{
+      border:1px solid rgba(0,166,246,0.28);
+      background:#EAF7FD;
+      color:#0470ad;
+      border-radius:999px;
+      padding:4px 10px;
+      font-size:12px;
+      font-weight:700;
+      line-height:1;
+    }
+    .body-text{font-size:14px; color: var(--muted); text-align:center; line-height:1.45; margin:0 4px 4px;}
+    .summary-card{
+      width:100%;
+      max-width:320px;
+      border:1px solid rgba(0,166,246,0.20);
+      background:#EAF7FD;
+      border-radius:14px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      animation: summary-enter 220ms ease-out both;
+    }
+    .summary-row{display:flex; flex-direction:column; gap:2px; text-align:center;}
+    .summary-label{font-size:12px; color:var(--muted);}
+    .summary-value{font-size:22px; font-weight:700; line-height:1.1; color:var(--text);}
+    .summary-value--handle{font-size:16px;}
+    .summary-divider{height:1px; background:rgba(0,166,246,0.14);}
+    .other-handles{width:100%; max-width:320px; font-size:12px; color:var(--muted); line-height:1.4; text-align:left; margin-top:2px;}
+    .field-title{margin-top:2px; margin-bottom:0; color:#111111; font-weight:700; font-size:14px; width:100%; max-width:320px;}
     .ig-input-wrap{position:relative; width:100%; max-width:320px;}
     .ig-icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; fill:currentColor; opacity:0.9; pointer-events:none;}
     .ig-input{width:100%; padding:12px 12px 12px 44px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px; outline:none;}
@@ -94,7 +177,21 @@
     .status-box{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px; font-size:13px;}
     .status-box--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
     .status-box[hidden]{display:none !important;}
-    .btn[disabled]{background:#9FCBDE; border-color:#9FCBDE; color:#ffffff; cursor:not-allowed; box-shadow:none;}
+    .btn[disabled]{background:#A7D7EC; border-color:#A7D7EC; color:#f8fcff; cursor:not-allowed; box-shadow:none; filter:saturate(0.85);}
+    .btn:active{transform:scale(0.98);}
+    @keyframes summary-enter{
+      from {opacity:0; transform:translateY(6px);}
+      to {opacity:1; transform:translateY(0);}
+    }
+    @media (max-width: 480px){
+      .page{padding:16px; padding-bottom: calc(16px + env(safe-area-inset-bottom));}
+      .card{padding:16px 16px calc(16px + env(safe-area-inset-bottom));}
+      .summary-card{padding:10px;}
+      .summary-value{font-size:20px;}
+      .summary-value--handle{font-size:15px;}
+      .btn{font-size:15px; padding:12px 14px;}
+      .btn-text{max-width:190px;}
+    }
   </style>
 </head>
 <body>
@@ -134,16 +231,25 @@
           </svg>
         </div>
         {% if join_intent %}
-          <h1>Dogovorjeno ✅</h1>
-          <div class="body-text">Termin: {{ window_label }}</div>
-          {% if primary_other %}
-            <div class="who-card">
-              <div class="who-label">Greš z</div>
-              <div class="who-handle">{{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
+          <h1>Dogovorjeno</h1>
+          <div class="status-pill">Potrjeno</div>
+          <div class="summary-card">
+            <div class="summary-row">
+              <div class="summary-label">Termin</div>
+              <div class="summary-value">{{ window_label }}</div>
             </div>
-          {% else %}
-            <div class="body-text">Trenutno ni uporabnika za kontakt v tem terminu.</div>
-          {% endif %}
+            <div class="summary-divider"></div>
+            <div class="summary-row">
+              <div class="summary-label">Greš z</div>
+              <div class="summary-value summary-value--handle">
+                {% if primary_other %}
+                  {{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}
+                {% else %}
+                  Zaenkrat brez kontakta
+                {% endif %}
+              </div>
+            </div>
+          </div>
           <div class="field-title">Tvoj Instagram</div>
           <div class="ig-input-wrap">
             <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
@@ -163,60 +269,77 @@
           >
             Pridruži se
           </button>
-          <div class="footer-link">
-            <a class="link" href="/feed">Nazaj na pregled</a>
+          <div class="actions-secondary">
+            <a class="action-link" href="/feed">Nazaj na pregled</a>
           </div>
         {% elif joined_existing %}
-          <h1>Dogovorjeno ✅</h1>
-          <div class="body-text">Termin: {{ window_label }}</div>
-          {% if primary_other %}
-            <div class="who-card">
-              <div class="who-label">Greš z</div>
-              <div class="who-handle">{{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
+          <h1>Dogovorjeno</h1>
+          <div class="status-pill">Potrjeno</div>
+          <div class="summary-card">
+            <div class="summary-row">
+              <div class="summary-label">Termin</div>
+              <div class="summary-value">{{ window_label }}</div>
             </div>
-          {% endif %}
+            <div class="summary-divider"></div>
+            <div class="summary-row">
+              <div class="summary-label">Greš z</div>
+              <div class="summary-value summary-value--handle">
+                {% if primary_other %}
+                  {{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}
+                {% else %}
+                  Zaenkrat brez kontakta
+                {% endif %}
+              </div>
+            </div>
+          </div>
 
           {% if others_instagram_links %}
+            {% set primary_contact = others_instagram_links[0] %}
             <div class="cta-stack">
-              {% for other in others_instagram_links %}
-                <a class="btn" href="{{ other.url }}" target="_blank" rel="noopener">Kontaktiraj {{ other.handle }}</a>
-              {% endfor %}
-              <form method="post" action="/waiting/leave" style="margin:0;">
-                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-                <input type="hidden" name="user_id" value="{{ user_id }}">
-                <input type="hidden" name="go_time" value="{{ go_time }}">
-                <button class="btn-secondary" type="submit">Prekliči plan</button>
-              </form>
+              <a class="btn" href="{{ primary_contact.url }}" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+                </svg>
+                <span class="btn-text">Kontaktiraj {{ primary_contact.handle }}</span>
+              </a>
             </div>
+            {% if others_instagram_links|length > 1 %}
+              <div class="other-handles">Ostali: {% for other in others_instagram_links[1:] %}{{ other.handle }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
+            {% endif %}
           {% else %}
             <div class="body-text">Zaenkrat ni drugega uporabnika za kontakt.</div>
-            <div class="cta-stack">
-              <form method="post" action="/waiting/leave" style="margin:0;">
-                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-                <input type="hidden" name="user_id" value="{{ user_id }}">
-                <input type="hidden" name="go_time" value="{{ go_time }}">
-                <button class="btn-secondary" type="submit">Prekliči plan</button>
-              </form>
-            </div>
           {% endif %}
-          <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
-          </div>
-        {% else %}
-          <h1>Plan objavljen 🎉</h1>
-          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo. Termin: {{ window_label }}</div>
-
-          <div class="cta-stack">
-            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
-            <form method="post" action="/waiting/leave" style="margin:0;">
+          <div class="actions-secondary">
+            <form method="post" action="/waiting/leave">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">
               <input type="hidden" name="go_time" value="{{ go_time }}">
-              <button class="btn-secondary" type="submit">Prekliči plan</button>
+              <button class="action-link action-link--danger" type="submit">Prekliči plan</button>
             </form>
+            <a class="action-link" href="/">Nazaj na pregled</a>
           </div>
-          <div class="footer-link">
-            <a class="link" href="/">Nazaj na pregled</a>
+        {% else %}
+          <h1>Plan objavljen</h1>
+          <div class="status-pill">Aktivno</div>
+          <div class="summary-card">
+            <div class="summary-row">
+              <div class="summary-label">Termin</div>
+              <div class="summary-value">{{ window_label }}</div>
+            </div>
+          </div>
+          <div class="body-text">Drugi uporabniki ga lahko zdaj vidijo in se ti pridružijo.</div>
+
+          <div class="cta-stack">
+            <button class="btn" id="shareInviteBtn" type="button" data-url="{{ share_url }}" data-msg="{{ copy_invite_message }}">Deli povabilo</button>
+          </div>
+          <div class="actions-secondary">
+            <form method="post" action="/waiting/leave">
+              <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+              <input type="hidden" name="user_id" value="{{ user_id }}">
+              <input type="hidden" name="go_time" value="{{ go_time }}">
+              <button class="action-link action-link--danger" type="submit">Prekliči plan</button>
+            </form>
+            <a class="action-link" href="/">Nazaj na pregled</a>
           </div>
         {% endif %}
       </div>
