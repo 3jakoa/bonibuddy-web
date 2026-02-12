@@ -56,9 +56,10 @@
       backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
-      height: calc(100% - 48px);
-      max-height: calc(100dvh - 48px);
+      max-height: calc(100dvh - 48px - env(safe-area-inset-bottom));
+      max-height: calc(100svh - 48px - env(safe-area-inset-bottom));
       min-height: 0;
+      overflow: hidden;
       position: relative;
     }
 
@@ -73,8 +74,10 @@
     }
 
     .logo-placeholder{
+      flex: 0 0 auto;
       width: 92px;
       height: 92px;
+      aspect-ratio: 1 / 1;
       border-radius: 50%;
       background: #EAF7FD;
       overflow: hidden;
@@ -213,6 +216,8 @@
     }
 
     /* Waiting board home */
+    .home-header{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:6px;}
+    .home-scroll{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-right:2px;}
     .chip{height:44px; padding:0 16px; border-radius:14px; border:1.5px solid #92DBF3; background: transparent; color:#007FBF; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; white-space:nowrap; box-shadow: none;}
     .chip--active{border: none; background: var(--accent); color:#ffffff; box-shadow: none;}
     .time-row{display:flex; gap:10px; align-items:center; margin:6px 0 4px;}
@@ -253,6 +258,7 @@
     .live-feed-icon svg{width:18px; height:18px; display:block; fill:currentColor;}
     @media (max-width: 480px){
       .live-feed-icon{width:36px; height:36px; top:12px; right:12px;}
+      .logo-placeholder{width:84px; height:84px;}
     }
   </style>
   {% include "_ga.html" %}
@@ -267,78 +273,82 @@
           <path d="M56,104a72,72,0,0,1,144,0c0,35.82,8.3,64.6,14.9,76A8,8,0,0,1,208,192H48a8,8,0,0,1-6.88-12C47.71,168.6,56,139.81,56,104Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
         </svg>
       </a>
-      <div class="logo-placeholder" aria-hidden="true">
-        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <g clip-path="url(#clip0_187_175)">
-            <rect width="512" height="512" fill="#F5F5F5"/>
-            <path d="M408 126C516.248 126 604 230.542 604 359.5C604 488.458 516.248 593 408 593H104C-4.24781 593 -92 488.458 -92 359.5C-92 230.542 -4.24781 126 104 126C165.318 126 220.06 159.545 256 212.071C291.94 159.545 346.682 126 408 126Z" fill="url(#paint0_radial_187_175)"/>
-            <mask id="mask0_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="113" y="261" width="101" height="81">
-              <path d="M163.812 261.566C191.434 261.566 213.826 283.959 213.826 311.581C213.826 322.912 210.056 333.361 203.705 341.747C191.756 336.784 177.561 333.907 162.333 333.907C148.064 333.907 134.701 336.432 123.243 340.834C117.301 332.608 113.797 322.504 113.797 311.581C113.797 283.959 136.189 261.567 163.812 261.566Z" fill="white"/>
-            </mask>
-            <g mask="url(#mask0_187_175)">
-              <circle cx="163.796" cy="311.581" r="50.0147" fill="white"/>
-              <path d="M130.503 292.783C135.206 284.638 142.766 278.53 151.716 275.643C160.667 272.756 170.371 273.297 178.946 277.16C187.521 281.023 194.356 287.933 198.125 296.549C201.894 305.166 202.328 314.876 199.343 323.794C196.359 332.713 190.168 340.206 181.972 344.819C173.777 349.432 164.16 350.836 154.987 348.76C145.814 346.684 137.739 341.275 132.328 333.583C126.917 325.89 124.556 316.462 125.703 307.128L163.362 311.754L130.503 292.783Z" fill="#131313"/>
+      <div class="home-header">
+        <div class="logo-placeholder" aria-hidden="true">
+          <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <g clip-path="url(#clip0_187_175)">
+              <rect width="512" height="512" fill="#F5F5F5"/>
+              <path d="M408 126C516.248 126 604 230.542 604 359.5C604 488.458 516.248 593 408 593H104C-4.24781 593 -92 488.458 -92 359.5C-92 230.542 -4.24781 126 104 126C165.318 126 220.06 159.545 256 212.071C291.94 159.545 346.682 126 408 126Z" fill="url(#paint0_radial_187_175)"/>
+              <mask id="mask0_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="113" y="261" width="101" height="81">
+                <path d="M163.812 261.566C191.434 261.566 213.826 283.959 213.826 311.581C213.826 322.912 210.056 333.361 203.705 341.747C191.756 336.784 177.561 333.907 162.333 333.907C148.064 333.907 134.701 336.432 123.243 340.834C117.301 332.608 113.797 322.504 113.797 311.581C113.797 283.959 136.189 261.567 163.812 261.566Z" fill="white"/>
+              </mask>
+              <g mask="url(#mask0_187_175)">
+                <circle cx="163.796" cy="311.581" r="50.0147" fill="white"/>
+                <path d="M130.503 292.783C135.206 284.638 142.766 278.53 151.716 275.643C160.667 272.756 170.371 273.297 178.946 277.16C187.521 281.023 194.356 287.933 198.125 296.549C201.894 305.166 202.328 314.876 199.343 323.794C196.359 332.713 190.168 340.206 181.972 344.819C173.777 349.432 164.16 350.836 154.987 348.76C145.814 346.684 137.739 341.275 132.328 333.583C126.917 325.89 124.556 316.462 125.703 307.128L163.362 311.754L130.503 292.783Z" fill="#131313"/>
+              </g>
+              <mask id="mask1_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="296" y="261" width="101" height="81">
+                <path d="M346.827 261.566C374.45 261.566 396.842 283.959 396.842 311.581C396.842 322.912 393.072 333.361 386.721 341.747C374.772 336.784 360.577 333.907 345.349 333.907C331.079 333.907 317.716 336.432 306.259 340.834C300.317 332.608 296.813 322.504 296.812 311.581C296.812 283.959 319.205 261.566 346.827 261.566Z" fill="white"/>
+              </mask>
+              <g mask="url(#mask1_187_175)">
+                <circle cx="346.812" cy="311.581" r="50.0147" fill="white"/>
+                <path d="M313.519 292.783C318.221 284.638 325.781 278.53 334.732 275.643C343.683 272.756 353.387 273.297 361.962 277.16C370.537 281.023 377.372 287.933 381.14 296.549C384.909 305.166 385.343 314.876 382.359 323.794C379.374 332.713 373.184 340.206 364.988 344.819C356.792 349.432 347.175 350.836 338.002 348.76C328.829 346.684 320.755 341.275 315.344 333.583C309.933 325.89 307.572 316.462 308.719 307.128L346.378 311.754L313.519 292.783Z" fill="#131313"/>
+              </g>
+              <path d="M185.508 378.436C185.508 378.436 228.062 399.355 256.928 398.834C285.794 398.313 324.638 378.436 324.638 378.436" stroke="#25130D" stroke-width="11.1304" stroke-linecap="round"/>
             </g>
-            <mask id="mask1_187_175" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="296" y="261" width="101" height="81">
-              <path d="M346.827 261.566C374.45 261.566 396.842 283.959 396.842 311.581C396.842 322.912 393.072 333.361 386.721 341.747C374.772 336.784 360.577 333.907 345.349 333.907C331.079 333.907 317.716 336.432 306.259 340.834C300.317 332.608 296.813 322.504 296.812 311.581C296.812 283.959 319.205 261.566 346.827 261.566Z" fill="white"/>
-            </mask>
-            <g mask="url(#mask1_187_175)">
-              <circle cx="346.812" cy="311.581" r="50.0147" fill="white"/>
-              <path d="M313.519 292.783C318.221 284.638 325.781 278.53 334.732 275.643C343.683 272.756 353.387 273.297 361.962 277.16C370.537 281.023 377.372 287.933 381.14 296.549C384.909 305.166 385.343 314.876 382.359 323.794C379.374 332.713 373.184 340.206 364.988 344.819C356.792 349.432 347.175 350.836 338.002 348.76C328.829 346.684 320.755 341.275 315.344 333.583C309.933 325.89 307.572 316.462 308.719 307.128L346.378 311.754L313.519 292.783Z" fill="#131313"/>
-            </g>
-            <path d="M185.508 378.436C185.508 378.436 228.062 399.355 256.928 398.834C285.794 398.313 324.638 378.436 324.638 378.436" stroke="#25130D" stroke-width="11.1304" stroke-linecap="round"/>
-          </g>
-          <defs>
-            <radialGradient id="paint0_radial_187_175" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 359.5) rotate(90) scale(233.5 348)">
-              <stop stop-color="#00A6F6"/>
-              <stop offset="1" stop-color="#92DBF3"/>
-            </radialGradient>
-            <clipPath id="clip0_187_175">
-              <rect width="512" height="512" fill="white"/>
-            </clipPath>
-          </defs>
-        </svg>
-      </div>
-      <h1 style="margin-bottom:6px;">Greš na bone?</h1>
-      {% include "_active_plan.html" %}
-      {% if msg %}<div class="error" style="margin-top:4px;">{{ msg }}</div>{% endif %}
-
-      <form id="publishForm" class="slot-form" novalidate>
-        <input type="hidden" id="selectedRestaurantId" name="restaurant_id" value="{{ selected_restaurant_id }}">
-        <input type="hidden" id="refInput" name="ref" value="{{ ref }}">
-
-        <div class="field-title">Kdaj greš</div>
-        <div class="time-row">
-          <input id="goTimeInput" class="time-input" type="time" name="go_time" value="{{ selected_go_time }}" step="300" required>
-        </div>
-        <div class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></div>
-
-        <div class="field-title">Poišči kam greš</div>
-        <div id="restaurantInputWrap" class="picker-wrap">
-          <input id="restSearchInput" class="picker-input" type="text" placeholder="Vpiši ime restavracije" autocomplete="off">
-        </div>
-        <div id="restaurantSuggestions" class="suggestions" hidden></div>
-        <div id="restaurantNoResults" class="hint" hidden>Ni zadetkov.</div>
-
-        <div id="selectedRestaurantCard" class="selected-card" hidden>
-          <div>
-            <div id="selectedRestaurantName" class="selected-name"></div>
-            <div id="selectedRestaurantSub" class="selected-sub"></div>
-          </div>
-          <button id="changeRestaurantBtn" type="button" class="change-btn">Spremeni</button>
-        </div>
-
-        <div class="field-title">Instagram</div>
-        <div class="ig-input-wrap">
-          <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+            <defs>
+              <radialGradient id="paint0_radial_187_175" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 359.5) rotate(90) scale(233.5 348)">
+                <stop stop-color="#00A6F6"/>
+                <stop offset="1" stop-color="#92DBF3"/>
+              </radialGradient>
+              <clipPath id="clip0_187_175">
+                <rect width="512" height="512" fill="white"/>
+              </clipPath>
+            </defs>
           </svg>
-          <input id="userIdInput" class="ig-input" type="text" name="user_id" placeholder="tvoj Instagram" value="{{ user_id }}" required>
         </div>
-        <div id="igHint" class="hint">Dovoljeni znaki: črke, številke, pika in podčrtaj.</div>
-        <button id="publishBtn" class="btn" type="submit" disabled>Potrdi</button>
-        <div id="publishStatus" class="publish-status" hidden></div>
-      </form>
+        <h1 style="margin-bottom:6px;">Greš na bone?</h1>
+      </div>
+      <div class="home-scroll">
+        {% include "_active_plan.html" %}
+        {% if msg %}<div class="error" style="margin-top:4px;">{{ msg }}</div>{% endif %}
+
+        <form id="publishForm" class="slot-form" novalidate>
+          <input type="hidden" id="selectedRestaurantId" name="restaurant_id" value="{{ selected_restaurant_id }}">
+          <input type="hidden" id="refInput" name="ref" value="{{ ref }}">
+
+          <div class="field-title">Kdaj greš</div>
+          <div class="time-row">
+            <input id="goTimeInput" class="time-input" type="time" name="go_time" value="{{ selected_go_time }}" step="300" required>
+          </div>
+          <div class="time-caption">Aktivno okno: <span id="windowLabel">{{ selected_window_label }}</span></div>
+
+          <div class="field-title">Poišči kam greš</div>
+          <div id="restaurantInputWrap" class="picker-wrap">
+            <input id="restSearchInput" class="picker-input" type="text" placeholder="Vpiši ime restavracije" autocomplete="off">
+          </div>
+          <div id="restaurantSuggestions" class="suggestions" hidden></div>
+          <div id="restaurantNoResults" class="hint" hidden>Ni zadetkov.</div>
+
+          <div id="selectedRestaurantCard" class="selected-card" hidden>
+            <div>
+              <div id="selectedRestaurantName" class="selected-name"></div>
+              <div id="selectedRestaurantSub" class="selected-sub"></div>
+            </div>
+            <button id="changeRestaurantBtn" type="button" class="change-btn">Spremeni</button>
+          </div>
+
+          <div class="field-title">Instagram</div>
+          <div class="ig-input-wrap">
+            <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+            </svg>
+            <input id="userIdInput" class="ig-input" type="text" name="user_id" placeholder="tvoj Instagram" value="{{ user_id }}" required>
+          </div>
+          <div id="igHint" class="hint">Dovoljeni znaki: črke, številke, pika in podčrtaj.</div>
+          <button id="publishBtn" class="btn" type="submit" disabled>Potrdi</button>
+          <div id="publishStatus" class="publish-status" hidden></div>
+        </form>
+      </div>
     {% else %}
       <div class="logo-placeholder" aria-hidden="true">
         <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
