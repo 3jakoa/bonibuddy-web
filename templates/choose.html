@@ -86,7 +86,7 @@
       {% if restaurants_with_counts %}
         {% for item in restaurants_with_counts %}
           <div class="rest-row">
-            <a href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}">
+            <a href="/?restaurant_id={{ item.restaurant.id | urlencode }}&go_time={{ selected_go_time | urlencode }}">
               <div class="rest-name">{{ item.restaurant.name }}</div>
               <div class="rest-sub">{{ item.restaurant.address or item.restaurant.city }}</div>
             </a>
@@ -95,8 +95,8 @@
               <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
                 {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
               </div>
-              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1">Join</a>
-              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">Pridruži se</a>
+              <a class="join-btn" href="/?restaurant_id={{ item.restaurant.id | urlencode }}&go_time={{ selected_go_time | urlencode }}">Join</a>
+              <a class="join-btn" href="/?restaurant_id={{ item.restaurant.id | urlencode }}&go_time={{ selected_go_time | urlencode }}">Pridruži se</a>
             </div>
           </div>
         {% endfor %}
