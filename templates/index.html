@@ -236,8 +236,6 @@
     .publish-status[hidden], .suggestions[hidden], .hint[hidden]{display:none !important;}
     .selected-name{font-size:15px; font-weight:700;}
     .selected-sub{font-size:12px; color:var(--muted); margin-top:2px;}
-    .selected-badge{padding:7px 9px; border-radius:10px; border:1px solid #05A5F7; color:#05A5F7; font-size:12px; font-weight:700; margin-top:6px; display:inline-block;}
-    .selected-badge--active{background:#05A5F7; color:#ffffff;}
     .change-btn{border:1px solid rgba(0,166,246,0.35); background:#ffffff; color:#007FBF; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
     .change-btn:hover{background:#dff3fd;}
     .ig-input-wrap{position:relative;}
@@ -326,7 +324,6 @@
           <div>
             <div id="selectedRestaurantName" class="selected-name"></div>
             <div id="selectedRestaurantSub" class="selected-sub"></div>
-            <span id="selectedRestaurantBadge" class="selected-badge"></span>
           </div>
           <button id="changeRestaurantBtn" type="button" class="change-btn">Spremeni</button>
         </div>
@@ -407,14 +404,13 @@
     const selectedCard = document.getElementById('selectedRestaurantCard');
     const selectedName = document.getElementById('selectedRestaurantName');
     const selectedSub = document.getElementById('selectedRestaurantSub');
-    const selectedBadge = document.getElementById('selectedRestaurantBadge');
     const changeBtn = document.getElementById('changeRestaurantBtn');
     const userIdInput = document.getElementById('userIdInput');
     const publishBtn = document.getElementById('publishBtn');
     const publishStatus = document.getElementById('publishStatus');
     const refInput = document.getElementById('refInput');
     const igHint = document.getElementById('igHint');
-    if (!form || !goTimeInput || !windowLabel || !selectedRestaurantIdInput || !searchInput || !suggestions || !selectedCard || !selectedName || !selectedSub || !selectedBadge || !changeBtn || !userIdInput || !publishBtn || !publishStatus || !refInput || !igHint || !inputWrap || !noResults) return;
+    if (!form || !goTimeInput || !windowLabel || !selectedRestaurantIdInput || !searchInput || !suggestions || !selectedCard || !selectedName || !selectedSub || !changeBtn || !userIdInput || !publishBtn || !publishStatus || !refInput || !igHint || !inputWrap || !noResults) return;
 
     let selectedRestaurant = restaurants.find(item => item.id === selectedRestaurantIdInput.value) || null;
     let isSubmitting = false;
@@ -427,13 +423,6 @@
     function isValidInstagram(value) {
       const normalized = normalizeInstagram(value);
       return INSTAGRAM_RE.test(normalized);
-    }
-
-    function formatCount(count) {
-      const value = Number(count || 0);
-      if (value === 1) return '1 gre';
-      if (value === 0) return '0 gre';
-      return `${value} gredo`;
     }
 
     function windowLabelFrom(goTime) {
@@ -482,6 +471,9 @@
       const hasRestaurant = !!(selectedRestaurant && selectedRestaurant.id);
       const hasValidIg = isValidInstagram(userIdInput.value);
       publishBtn.disabled = isSubmitting || !hasTime || !hasRestaurant || !hasValidIg;
+      if (!isSubmitting) {
+        publishBtn.textContent = 'Potrdi';
+      }
     }
 
     function renderSelectedCard() {
@@ -494,9 +486,6 @@
       }
       selectedName.textContent = selectedRestaurant.name || '';
       selectedSub.textContent = selectedRestaurant.subtitle || '';
-      const count = Number(selectedRestaurant.count || 0);
-      selectedBadge.textContent = formatCount(count);
-      selectedBadge.classList.toggle('selected-badge--active', count > 0);
       selectedCard.hidden = false;
       inputWrap.hidden = true;
       selectedRestaurantIdInput.value = selectedRestaurant.id;
@@ -556,7 +545,6 @@
           searchInput.value = '';
           renderSelectedCard();
           syncUrlState();
-          refreshSelectedRestaurantCount();
         });
         suggestions.appendChild(btn);
       });
@@ -579,30 +567,10 @@
       } catch (e) {}
     }
 
-    async function refreshSelectedRestaurantCount() {
-      if (!selectedRestaurant || !selectedRestaurant.id || !goTimeInput.value) return;
-      try {
-        const res = await fetch(`/api/waiting_board/${encodeURIComponent(selectedRestaurant.id)}?go_time=${encodeURIComponent(goTimeInput.value)}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        selectedRestaurant = {
-          ...selectedRestaurant,
-          count: Number(data.count || 0),
-        };
-        if (data.window_label) {
-          windowLabel.textContent = data.window_label;
-        }
-        renderSelectedCard();
-      } catch (e) {
-        // best effort
-      }
-    }
-
     goTimeInput.addEventListener('change', () => {
       windowLabel.textContent = windowLabelFrom(goTimeInput.value) || windowLabel.textContent;
       syncUrlState();
       updateButtonState();
-      refreshSelectedRestaurantCount();
     });
 
     searchInput.addEventListener('focus', renderSuggestions);
@@ -683,17 +651,13 @@
         }
         userIdInput.value = data.user_id || normalizedUser;
         if (data.window_label) windowLabel.textContent = data.window_label;
-        if (typeof data.window_count === 'number') {
-          selectedRestaurant = { ...selectedRestaurant, count: data.window_count };
-          renderSelectedCard();
-        }
+        renderSelectedCard();
         setStatus(data.message || 'Plan objavljen.', false);
         syncUrlState();
       } catch (e) {
         setStatus('Prišlo je do napake. Poskusi znova.', true);
       } finally {
         isSubmitting = false;
-        publishBtn.textContent = 'Potrdi';
         updateButtonState();
       }
     });
@@ -706,8 +670,6 @@
     if (!selectedRestaurant) {
       suggestions.hidden = true;
       noResults.hidden = true;
-    } else {
-      refreshSelectedRestaurantCount();
     }
     updateIgHint();
     updateButtonState();

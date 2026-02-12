@@ -81,6 +81,9 @@
     .footer-link{display:flex; justify-content:flex-start;}
     .card-body{display:flex; flex-direction:column; gap:12px; align-items:center; min-height:0;}
     .body-text{font-size:14px; color: var(--muted); text-align:center; line-height:1.5; margin:0 4px 6px;}
+    .who-card{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.20); background:#EAF7FD; border-radius:12px; padding:10px 12px; text-align:center;}
+    .who-label{font-size:12px; color:var(--muted);}
+    .who-handle{margin-top:4px; font-size:18px; font-weight:700; color:var(--text);}
   </style>
 </head>
 <body>
@@ -122,10 +125,15 @@
         {% if joined_existing %}
           <h1>Dogovorjeno ✅</h1>
           <div class="body-text">Termin: {{ window_label }}</div>
-          <h1>Dogovorjeno ✅</h1>
+          {% if primary_other %}
+            <div class="who-card">
+              <div class="who-label">Greš z</div>
+              <div class="who-handle">{{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
+            </div>
+          {% endif %}
 
           <div class="cta-stack">
-            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj na Instagramu</a>
+            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj {{ primary_other or 'na Instagramu' }}</a>
             <form method="post" action="/waiting/leave" style="margin:0;">
               <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
               <input type="hidden" name="user_id" value="{{ user_id }}">

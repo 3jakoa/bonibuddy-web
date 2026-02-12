@@ -414,30 +414,14 @@ def index(request: Request):
                 status_code=303,
             )
 
-        candidate_restaurants = list(engine.list_restaurants())
-        rows = []
-        total_waiting = 0
-        restaurants_for_picker = []
-        for r in candidate_restaurants:
-            cnt = engine.get_waiting_count(r.id, selected_time)
-            total_waiting += cnt
-            rows.append(
-                {
-                    "restaurant": r,
-                    "count": cnt,
-                    "members": engine.get_waiting_members(r.id, selected_time),
-                }
-            )
-            restaurants_for_picker.append(
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "subtitle": r.address or r.city or "",
-                    "count": cnt,
-                }
-            )
-
-        rows.sort(key=lambda x: (-int(x["count"] > 0), -x["count"], x["restaurant"].name.lower()))
+        restaurants_for_picker = [
+            {
+                "id": r.id,
+                "name": r.name,
+                "subtitle": r.address or r.city or "",
+            }
+            for r in engine.list_restaurants()
+        ]
         restaurants_for_picker.sort(key=lambda x: x["name"].lower())
 
         cookie_uid = normalize_instagram(request.cookies.get("bb_uid") or "")
@@ -448,8 +432,6 @@ def index(request: Request):
             "index.html",
             {
                 "feature_waiting_board": True,
-                "total_waiting": total_waiting,
-                "rows": rows,
                 "restaurants": restaurants_for_picker,
                 "selected_go_time": selected_go_time,
                 "selected_window_label": _window_label_for(selected_time),
@@ -489,12 +471,22 @@ def choose(request: Request):
 def feed(request: Request):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    items = _build_feed_items()
+    cookie_uid = normalize_instagram(request.cookies.get("bb_uid") or "")
+    active_plan = _get_active_plan(cookie_uid)
+    own_restaurant = active_plan["restaurant"].id if active_plan else ""
+    own_go_time = active_plan["go_time"] if active_plan else ""
+    items = [
+        item
+        for item in _build_feed_items()
+        if not (own_restaurant and own_go_time and item.get("restaurant_id") == own_restaurant and item.get("go_time") == own_go_time)
+    ]
     return render_template(
         request,
         "feed.html",
         {
             "items": items,
+            "active_plan": active_plan,
+            "msg": (request.query_params.get("msg") or "").strip(),
         },
     )
 
@@ -544,8 +536,7 @@ def waiting_publish_api(body: PublishSlotIn):
     if published["created_new"]:
         message = "Plan objavljen."
     else:
-        others = int(published["other_count"])
-        message = "Plan posodobljen." if others <= 0 else f"Super, ob tem času gre še {others}."
+        message = "Plan posodobljen."
 
     resp = JSONResponse(
         content={
@@ -560,6 +551,59 @@ def waiting_publish_api(body: PublishSlotIn):
             "user_id": published["user_id"],
         }
     )
+    resp.set_cookie(
+        "bb_uid",
+        value=published["user_id"],
+        max_age=60 * 60 * 24 * 30,
+        samesite="lax",
+    )
+    return resp
+
+
+@app.get("/waiting/{restaurant_id}/quick-join")
+def waiting_quick_join(
+    request: Request,
+    restaurant_id: str,
+    go_time: str,
+):
+    if not FEATURE_WAITING_BOARD:
+        return RedirectResponse(url="/", status_code=303)
+
+    user_id = normalize_instagram(request.cookies.get("bb_uid") or "")
+    if not user_id:
+        return RedirectResponse(
+            url=_with_query(
+                "/",
+                restaurant_id=(restaurant_id or "").strip().lower() or None,
+                go_time=(go_time or "").strip() or None,
+                msg="Najprej ustvari svoj plan in vpiši Instagram uporabnika.",
+            ),
+            status_code=303,
+        )
+
+    published, err = _publish_waiting_slot(
+        restaurant_id=restaurant_id,
+        go_time_raw=go_time,
+        user_id_raw=user_id,
+    )
+    if err or not published:
+        msg = "Pridružitev ni uspela."
+        if err == "invalid_go_time":
+            msg = "Neveljaven čas."
+        elif err == "active_plan_exists":
+            msg = "Imaš že aktiven plan. Najprej ga prekliči."
+        elif err == "restaurant_not_found":
+            msg = "Restavracija ni bila najdena."
+        return RedirectResponse(url=_with_query("/feed", msg=msg), status_code=303)
+
+    created_flag = "1" if published["created_new"] else "0"
+    back = _with_query(
+        f"/done/{published['restaurant_id']}",
+        go_time=published["go_time"],
+        u=published["user_id"],
+        created=created_flag,
+    )
+    resp = RedirectResponse(url=back, status_code=303)
     resp.set_cookie(
         "bb_uid",
         value=published["user_id"],
@@ -1030,6 +1074,7 @@ def waiting_leave(
 def plan_cancel(
     request: Request,
     restaurant_id: str | None = Form(None),
+    next_url: str | None = Form(None),
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
@@ -1043,7 +1088,10 @@ def plan_cancel(
             target_restaurant = plan["restaurant"].id
     if target_restaurant:
         engine.leave_slot(user_id=user_id, restaurant_id=target_restaurant)
-    return RedirectResponse(url="/", status_code=303)
+    dest = "/"
+    if next_url and next_url.startswith("/"):
+        dest = next_url
+    return RedirectResponse(url=dest, status_code=303)
 
 
 @app.get("/waiting/new", response_class=HTMLResponse)
