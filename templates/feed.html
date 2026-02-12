@@ -80,7 +80,7 @@
     items.forEach(item => {
       const a = document.createElement('a');
       a.className = 'rest-row rest-row--active';
-      a.href = `/waiting/${item.restaurant_id}?go_time=${encodeURIComponent(item.go_time)}&join=1`;
+      a.href = `/?restaurant_id=${encodeURIComponent(item.restaurant_id)}&go_time=${encodeURIComponent(item.go_time)}`;
 
       const info = document.createElement('div');
       info.className = 'rest-info';

@@ -1,6 +1,6 @@
 {% if active_plan %}
   {% set ref_handle = (request.cookies.get('bb_uid') or '')|urlencode %}
-  {% set share_url = '/waiting/' ~ active_plan.restaurant.id ~ '?go_time=' ~ (active_plan.go_time|urlencode) ~ '&join=1&ref=' ~ ref_handle %}
+  {% set share_url = '/?restaurant_id=' ~ active_plan.restaurant.id ~ '&go_time=' ~ (active_plan.go_time|urlencode) ~ '&ref=' ~ ref_handle %}
   <div style="border:1px solid rgba(0,166,246,0.18); background: #ffffff; border-radius:14px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
     <div>
       <div style="font-weight:700;">Tvoj plan</div>

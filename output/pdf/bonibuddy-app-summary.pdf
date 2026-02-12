@@ -1,0 +1,69 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 3178 >>
+stream
+BT /F2 18 Tf 54 748 Td (BoniBuddy App Summary \(One Page\)) Tj ET
+BT /F2 12 Tf 54 722 Td (What it is) Tj ET
+BT /F1 10 Tf 54 704 Td (BoniBuddy is a FastAPI web app for finding meal company and coordinating a shared go-time at) Tj ET
+BT /F1 10 Tf 54 690 Td (student-subsidy restaurants. It currently defaults to a waiting-board workflow, with a legacy one-to-one) Tj ET
+BT /F1 10 Tf 54 676 Td (matching flow still present in code.) Tj ET
+BT /F2 12 Tf 54 660 Td (Who it is for) Tj ET
+BT /F1 10 Tf 54 642 Td (Primary persona: students using Slovenian student meal subsidies \(boni\), especially users coordinating) Tj ET
+BT /F1 10 Tf 54 628 Td (lunch plans around Ljubljana listings.) Tj ET
+BT /F2 12 Tf 54 612 Td (What it does) Tj ET
+BT /F1 10 Tf 54 594 Td (- Browses and searches restaurants loaded from data/restaurants.json.) Tj ET
+BT /F1 10 Tf 54 580 Td (- Shows active counts and handles for a selected go-time window per restaurant.) Tj ET
+BT /F1 10 Tf 54 566 Td (- Lets users publish a plan, join others, and cancel via form posts.) Tj ET
+BT /F1 10 Tf 54 552 Td (- Provides a live feed and waiting-board updates via JSON polling endpoints.) Tj ET
+BT /F1 10 Tf 54 538 Td (- Supports legacy mutual-preference matching with waiting/matched/expired states.) Tj ET
+BT /F1 10 Tf 54 524 Td (- Supports installable PWA behavior and optional web push notifications.) Tj ET
+BT /F1 10 Tf 54 510 Td (- Sends best-effort GA4 analytics events for core interactions.) Tj ET
+BT /F2 12 Tf 54 494 Td (How it works \(repo evidence\)) Tj ET
+BT /F1 10 Tf 54 476 Td (- UI: Jinja templates in templates/ plus vanilla JS polling \(/api/feed, /api/waiting_board/{id},) Tj ET
+BT /F1 10 Tf 54 462 Td (/status/{rid}\).) Tj ET
+BT /F1 10 Tf 54 448 Td (- Web/API: FastAPI routes in app.py render pages, accept form actions, and serve JSON.) Tj ET
+BT /F1 10 Tf 54 434 Td (- Domain logic: engine_web.py handles restaurant loading, waiting slots, cleanup, and matching rules.) Tj ET
+BT /F1 10 Tf 54 420 Td (- Data/state: seed data from data/restaurants.json; runtime state kept in in-memory dict/list) Tj ET
+BT /F1 10 Tf 54 406 Td (structures.) Tj ET
+BT /F1 10 Tf 54 392 Td (- Integrations: optional VAPID web push \(pywebpush\) and GA4 Measurement Protocol env vars.) Tj ET
+BT /F1 10 Tf 54 378 Td (- Flow: Browser request -> FastAPI route -> engine query/mutation -> HTML or JSON -> client refresh.) Tj ET
+BT /F2 12 Tf 54 362 Td (How to run \(minimal\)) Tj ET
+BT /F1 10 Tf 54 344 Td (1. Use Python 3.11 \(runtime.txt pins 3.11.9\) and create/activate a virtual environment.) Tj ET
+BT /F1 10 Tf 54 330 Td (2. Install dependencies: pip install -r requirements.txt.) Tj ET
+BT /F1 10 Tf 54 316 Td (3. Start app \(inferred from FastAPI app object and uvicorn dependency\): uvicorn app:app --reload) Tj ET
+BT /F1 10 Tf 54 302 Td (--port 8000.) Tj ET
+BT /F1 10 Tf 54 288 Td (4. Open http://127.0.0.1:8000 in a browser.) Tj ET
+BT /F1 10 Tf 54 274 Td (5. Optional env vars for extras: FEATURE_WAITING_BOARD, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,) Tj ET
+BT /F1 10 Tf 54 260 Td (VAPID_SUBJECT, GA4_MEASUREMENT_ID, GA4_API_SECRET.) Tj ET
+BT /F1 10 Tf 54 246 Td (6. Official README/start script: Not found in repo.) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000321 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3626
+%%EOF
