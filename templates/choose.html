@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="{{ get_locale }}">
+<html lang="sl">
 <head>
   <meta charset="utf-8">
-  <title>{{ _("BoniBuddy • Kam greš jest?") }}</title>
+  <title>BoniBuddy • Kam greš jest?</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -77,7 +77,7 @@
       <input type="hidden" name="go_time" value="{{ selected_go_time }}">
       <input type="text" name="q" value="{{ query }}" placeholder="Išči menzo po imenu" autocomplete="off">
       {% if query %}
-        <button type="button" class="search-clear" aria-label="{{ _('Počisti iskanje') }}"
+        <button type="button" class="search-clear" aria-label="Počisti iskanje"
                 onclick="this.closest('form').querySelector('input[name=q]').value=''; this.closest('form').submit(); return false;">✕</button>
       {% endif %}
     </form>
@@ -93,16 +93,16 @@
             <div style="display:flex; align-items:center;">
               {% set cnt = item.total_waiting %}
               <div class="badge {% if cnt > 0 %}badge--active{% endif %}">
-                {% if cnt == 1 %}{{ _("1 gre") }}{% elif cnt == 0 %}{{ _("0 gre") }}{% else %}{{ _("%(count)s gredo", count=cnt) }}{% endif %}
+                {% if cnt == 1 %}1 gre{% elif cnt == 0 %}0 gre{% else %}{{ cnt }} gredo{% endif %}
               </div>
               <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?go_time={{ selected_go_time | urlencode }}&join=1">Join</a>
-              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">{{ _("Pridruži se") }}</a>
+              <a class="join-btn" href="/waiting/{{ item.restaurant.id }}?t={{ time_bucket }}&join=1">Pridruži se</a>
             </div>
           </div>
         {% endfor %}
       {% endif %}
     </div>
-    <div class="foot">{{ _("MVP: brez realtime osveževanja, posodobi stran ročno.") }}</div>
+    <div class="foot">MVP: brez realtime osveževanja, posodobi stran ročno.</div>
   </div>
   <script>
     (function() {

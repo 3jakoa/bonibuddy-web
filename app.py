@@ -8,17 +8,10 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, urlencode
 import os
-from babel.support import Translations
-from jinja2 import pass_context
 
 import engine_web as engine
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# i18n configuration
-LOCALES_DIR = BASE_DIR / "locales"
-DEFAULT_LOCALE = "sl"
-SUPPORTED_LOCALES = {"sl", "en"}
 
 app = FastAPI()
 
@@ -167,39 +160,13 @@ def _build_feed_items(now: datetime | None = None) -> list[dict]:
     return rows
 
 
-def resolve_locale(request: Request) -> str:
-    """Decide locale from cookie (lang) with fallback to default."""
-    raw = (request.cookies.get("lang") or "").lower().strip()
-    if raw in SUPPORTED_LOCALES:
-        return raw
-    return DEFAULT_LOCALE
-
-
-def get_translations(locale: str) -> Translations:
-    """Load compiled translations for given locale; fallback to NullTranslations."""
-    try:
-        return Translations.load(str(LOCALES_DIR), locales=locale, domain="messages")
-    except Exception:
-        return Translations()
-
-
 def render_template(request: Request, template_name: str, context: dict):
-    """Add i18n helpers to template context and render."""
-    locale = resolve_locale(request)
-    translations = get_translations(locale)
-    context_with_i18n = {
+    """Render a template with request context."""
+    context_with_request = {
         "request": request,
-        "_": translations.gettext,
-        "get_locale": locale,
         **context,
     }
-    return templates.TemplateResponse(template_name, context_with_i18n)
-
-
-def gettext_for(request: Request):
-    """Return gettext function bound to the request locale."""
-    locale = resolve_locale(request)
-    return get_translations(locale).gettext
+    return templates.TemplateResponse(template_name, context_with_request)
 
 def _get_env(name: str) -> str:
     v = os.getenv(name, "").strip()
@@ -489,7 +456,6 @@ def go(
     instagram_username: str = Form(None),
     consent: str = Form(None),
 ):
-    _ = gettext_for(request)
     if FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
     if consent != "yes":
@@ -499,7 +465,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu."),
+                "error": "Za nadaljevanje moraš potrditi, da se tvoj kontakt deli samo ob matchu.",
             },
         )
 
@@ -510,7 +476,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Neveljavno mesto."),
+                "error": "Neveljavno mesto.",
             },
         )
 
@@ -523,7 +489,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Neveljavna lokacija."),
+                "error": "Neveljavna lokacija.",
             },
         )
 
@@ -534,7 +500,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Neveljavna izbira časa."),
+                "error": "Neveljavna izbira časa.",
             },
         )
 
@@ -545,7 +511,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Neveljavna izbira preference."),
+                "error": "Neveljavna izbira preference.",
             },
         )
 
@@ -556,7 +522,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Neveljavna izbira spola."),
+                "error": "Neveljavna izbira spola.",
             },
         )
 
@@ -568,7 +534,7 @@ def go(
             {
                 "locations": LOCATIONS_BY_CITY["ljubljana"],
                 "feature_waiting_board": False,
-                "error": _("Vpiši veljavno Instagram uporabniško ime."),
+                "error": "Vpiši veljavno Instagram uporabniško ime.",
             },
         )
 
