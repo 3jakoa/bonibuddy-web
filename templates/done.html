@@ -2,7 +2,7 @@
 <html lang="sl">
 <head>
   <meta charset="utf-8">
-  <title>BoniBuddy • {{ 'Zaključeno' if joined_existing else 'Plan objavljen' }}</title>
+  <title>BoniBuddy • {{ 'Dogovorjeno' if join_intent else ('Zaključeno' if joined_existing else 'Plan objavljen') }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{
@@ -84,6 +84,17 @@
     .who-card{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.20); background:#EAF7FD; border-radius:12px; padding:10px 12px; text-align:center;}
     .who-label{font-size:12px; color:var(--muted);}
     .who-handle{margin-top:4px; font-size:18px; font-weight:700; color:var(--text);}
+    .field-title{margin-top:4px; margin-bottom:2px; color:#111111; font-weight:700; font-size:14px; width:100%; max-width:320px;}
+    .ig-input-wrap{position:relative; width:100%; max-width:320px;}
+    .ig-icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; fill:currentColor; opacity:0.9; pointer-events:none;}
+    .ig-input{width:100%; padding:12px 12px 12px 44px; border-radius:12px; border:1px solid rgba(0,166,246,0.18); background:#ffffff; color:var(--text); font-size:15px; outline:none;}
+    .ig-input:focus{border-color: var(--accent); background: color-mix(in srgb, var(--accent-light) 20%, #ffffff 80%); box-shadow: 0 0 0 3px rgba(0,166,246,0.18);}
+    .hint{width:100%; max-width:320px; font-size:12px; color:var(--muted);}
+    .hint--error{color:#991b1b;}
+    .status-box{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px; font-size:13px;}
+    .status-box--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
+    .status-box[hidden]{display:none !important;}
+    .btn[disabled]{background:#9FCBDE; border-color:#9FCBDE; color:#ffffff; cursor:not-allowed; box-shadow:none;}
   </style>
 </head>
 <body>
@@ -122,7 +133,40 @@
             </defs>
           </svg>
         </div>
-        {% if joined_existing %}
+        {% if join_intent %}
+          <h1>Dogovorjeno ✅</h1>
+          <div class="body-text">Termin: {{ window_label }}</div>
+          {% if primary_other %}
+            <div class="who-card">
+              <div class="who-label">Greš z</div>
+              <div class="who-handle">{{ primary_other }}{% if other_count > 0 %} +{{ other_count }}{% endif %}</div>
+            </div>
+          {% else %}
+            <div class="body-text">Trenutno ni uporabnika za kontakt v tem terminu.</div>
+          {% endif %}
+          <div class="field-title">Tvoj Instagram</div>
+          <div class="ig-input-wrap">
+            <svg class="ig-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm0 2h10c1.7 0 3 1.3 3 3v10c0 1.7-1.3 3-3 3H7c-1.7 0-3-1.3-3-3V7c0-1.7 1.3-3 3-3zm11.5 1a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"/>
+            </svg>
+            <input id="joinUserInput" class="ig-input" type="text" autocomplete="off" placeholder="tvoj Instagram" value="{{ prefill_user_id or '' }}">
+          </div>
+          <div id="joinHint" class="hint"></div>
+          <div id="joinStatus" class="status-box" hidden></div>
+          <button
+            class="btn"
+            id="joinAndContactBtn"
+            type="button"
+            data-restaurant-id="{{ join_api_payload.restaurant_id }}"
+            data-go-time="{{ join_api_payload.go_time }}"
+            disabled
+          >
+            Pridruži se
+          </button>
+          <div class="footer-link">
+            <a class="link" href="/feed">Nazaj na pregled</a>
+          </div>
+        {% elif joined_existing %}
           <h1>Dogovorjeno ✅</h1>
           <div class="body-text">Termin: {{ window_label }}</div>
           {% if primary_other %}
@@ -132,15 +176,29 @@
             </div>
           {% endif %}
 
-          <div class="cta-stack">
-            <a class="btn" href="{{ instagram_url }}" target="_blank" rel="noopener">Kontaktiraj {{ primary_other or 'na Instagramu' }}</a>
-            <form method="post" action="/waiting/leave" style="margin:0;">
-              <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
-              <input type="hidden" name="user_id" value="{{ user_id }}">
-              <input type="hidden" name="go_time" value="{{ go_time }}">
-              <button class="btn-secondary" type="submit">Prekliči plan</button>
-            </form>
-          </div>
+          {% if others_instagram_links %}
+            <div class="cta-stack">
+              {% for other in others_instagram_links %}
+                <a class="btn" href="{{ other.url }}" target="_blank" rel="noopener">Kontaktiraj {{ other.handle }}</a>
+              {% endfor %}
+              <form method="post" action="/waiting/leave" style="margin:0;">
+                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <input type="hidden" name="go_time" value="{{ go_time }}">
+                <button class="btn-secondary" type="submit">Prekliči plan</button>
+              </form>
+            </div>
+          {% else %}
+            <div class="body-text">Zaenkrat ni drugega uporabnika za kontakt.</div>
+            <div class="cta-stack">
+              <form method="post" action="/waiting/leave" style="margin:0;">
+                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <input type="hidden" name="go_time" value="{{ go_time }}">
+                <button class="btn-secondary" type="submit">Prekliči plan</button>
+              </form>
+            </div>
+          {% endif %}
           <div class="footer-link">
             <a class="link" href="/">Nazaj na pregled</a>
           </div>
@@ -165,6 +223,119 @@
     </div>
   </div>
   <script>
+    (function(){
+      const btn = document.getElementById('joinAndContactBtn');
+      if(!btn) return;
+      const userInput = document.getElementById('joinUserInput');
+      const hintEl = document.getElementById('joinHint');
+      const statusEl = document.getElementById('joinStatus');
+      if(!userInput || !hintEl || !statusEl) return;
+
+      const INSTAGRAM_RE = /^[A-Za-z0-9._]{1,30}$/;
+      const lockedUid = {{ (locked_uid or "") | tojson }};
+      const defaultHint = lockedUid
+        ? `Brskalnik je trenutno vezan na @${lockedUid}.`
+        : 'Vpiši svoj Instagram za pridružitev.';
+      let isSubmitting = false;
+
+      function normalizeInstagram(value){
+        return (value || '').trim().replace(/^@+/, '');
+      }
+
+      function isValidInstagram(value){
+        return INSTAGRAM_RE.test(normalizeInstagram(value));
+      }
+
+      function setHint(text, isError){
+        hintEl.textContent = text || '';
+        hintEl.classList.toggle('hint--error', !!isError);
+      }
+
+      function setStatus(text, isError){
+        if(!text){
+          statusEl.hidden = true;
+          statusEl.textContent = '';
+          statusEl.classList.remove('status-box--error');
+          return;
+        }
+        statusEl.hidden = false;
+        statusEl.textContent = text;
+        statusEl.classList.toggle('status-box--error', !!isError);
+      }
+
+      function updateState(){
+        const normalized = normalizeInstagram(userInput.value);
+        const hasValidIg = isValidInstagram(normalized);
+
+        if(!normalized){
+          setHint(defaultHint, false);
+        }else if(!hasValidIg){
+          setHint('Vpiši veljavno Instagram uporabniško ime.', true);
+        }else if(lockedUid && normalized.toLowerCase() !== lockedUid.toLowerCase()){
+          setHint(`${defaultHint} Za zamenjavo najprej prekliči trenutni plan.`, true);
+        }else{
+          setHint(defaultHint, false);
+        }
+
+        btn.disabled = isSubmitting || !hasValidIg;
+        if(!isSubmitting) btn.textContent = 'Pridruži se';
+      }
+
+      userInput.addEventListener('input', () => {
+        setStatus('', false);
+        updateState();
+      });
+      userInput.addEventListener('blur', () => {
+        userInput.value = normalizeInstagram(userInput.value);
+        updateState();
+      });
+
+      btn.addEventListener('click', async () => {
+        const normalized = normalizeInstagram(userInput.value);
+        userInput.value = normalized;
+        setStatus('', false);
+        updateState();
+        if(btn.disabled) return;
+
+        isSubmitting = true;
+        btn.textContent = 'Pridružujem...';
+        updateState();
+
+        const restaurantId = (btn.dataset.restaurantId || '').trim();
+        const goTime = (btn.dataset.goTime || '').trim();
+
+        try{
+          const res = await fetch('/api/waiting/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              restaurant_id: restaurantId,
+              go_time: goTime,
+              user_id: normalized,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok || !data.ok){
+            setStatus(data.message || 'Pridružitev ni uspela.', true);
+            return;
+          }
+
+          const doneUrl = new URL(`/done/${encodeURIComponent(restaurantId)}`, window.location.origin);
+          doneUrl.searchParams.set('go_time', data.go_time || goTime);
+          doneUrl.searchParams.set('u', data.user_id || normalized);
+          doneUrl.searchParams.set('created', '0');
+          window.location.assign(doneUrl.toString());
+        }catch(_err){
+          setStatus('Prišlo je do napake. Poskusi znova.', true);
+        }finally{
+          isSubmitting = false;
+          updateState();
+        }
+      });
+
+      updateState();
+    })();
+
     (function(){
       const btn = document.getElementById('shareInviteBtn');
       if(!btn) return;

@@ -48,6 +48,7 @@
     .rest-info{flex:1; min-width:0;}
     .rest-name{font-size:15px; font-weight:600;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .rest-members{font-size:12px; color: var(--muted); margin-top:4px; white-space:normal; overflow-wrap:anywhere;}
     .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7; white-space:nowrap;}
     .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
     .status{font-size:12px; color: var(--muted);} 
@@ -113,8 +114,21 @@
 
       const info = document.createElement('div');
       info.className = 'rest-info';
-      info.innerHTML = `<div class="rest-name">${item.restaurant_name}</div>` +
-                       `<div class="rest-sub">${item.window_label || ''}</div>`;
+      const nameEl = document.createElement('div');
+      nameEl.className = 'rest-name';
+      nameEl.textContent = item.restaurant_name || '';
+      const subEl = document.createElement('div');
+      subEl.className = 'rest-sub';
+      subEl.textContent = item.window_label || '';
+      info.appendChild(nameEl);
+      info.appendChild(subEl);
+      const members = Array.isArray(item.members) ? item.members : [];
+      if (members.length) {
+        const membersEl = document.createElement('div');
+        membersEl.className = 'rest-members';
+        membersEl.textContent = members.map(m => `@${String(m || '').replace(/^@+/, '')}`).filter(Boolean).join(', ');
+        info.appendChild(membersEl);
+      }
 
       const badge = document.createElement('div');
       badge.className = 'badge badge--active';
