@@ -356,9 +356,8 @@
 
       const INSTAGRAM_RE = /^[A-Za-z0-9._]{1,30}$/;
       const lockedUid = {{ (locked_uid or "") | tojson }};
-      const defaultHint = lockedUid
-        ? `Brskalnik je trenutno vezan na @${lockedUid}.`
-        : 'Vpiši svoj Instagram za pridružitev.';
+      const defaultHint = 'Vpiši svoj Instagram za pridružitev.';
+      const lockedHint = 'V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan.';
       let isSubmitting = false;
 
       function normalizeInstagram(value){
@@ -395,7 +394,7 @@
         }else if(!hasValidIg){
           setHint('Vpiši veljavno Instagram uporabniško ime.', true);
         }else if(lockedUid && normalized.toLowerCase() !== lockedUid.toLowerCase()){
-          setHint(`${defaultHint} Za zamenjavo najprej prekliči trenutni plan.`, true);
+          setHint(lockedHint, true);
         }else{
           setHint(defaultHint, false);
         }

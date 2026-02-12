@@ -406,7 +406,7 @@
     const INSTAGRAM_RE = /^[A-Za-z0-9._]{1,30}$/;
     const DEFAULT_HINT = 'Dovoljeni znaki: črke, številke, pika in podčrtaj.';
     const LOCKED_UID = {{ (locked_uid or "") | tojson }};
-    const LOCKED_HINT = LOCKED_UID ? `Brskalnik je trenutno vezan na @${LOCKED_UID}.` : '';
+    const LOCKED_HINT = LOCKED_UID ? 'V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan.' : '';
     const INITIAL_HAS_ACTIVE_PLANS = {{ has_active_plans | tojson }};
 
     const liveFeedIcon = document.getElementById('liveFeedIcon');
@@ -488,7 +488,7 @@
       const value = userIdInput.value.trim();
       const normalized = normalizeInstagram(value);
       if (!value) {
-        igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
+        igHint.textContent = DEFAULT_HINT;
         igHint.classList.remove('hint--error');
         return;
       }
@@ -498,11 +498,11 @@
         return;
       }
       if (LOCKED_UID && normalized.toLowerCase() !== LOCKED_UID.toLowerCase()) {
-        igHint.textContent = `${LOCKED_HINT} Za zamenjavo najprej prekliči trenutni plan.`;
+        igHint.textContent = LOCKED_HINT;
         igHint.classList.add('hint--error');
         return;
       }
-      igHint.textContent = LOCKED_HINT || DEFAULT_HINT;
+      igHint.textContent = DEFAULT_HINT;
       igHint.classList.remove('hint--error');
     }
 

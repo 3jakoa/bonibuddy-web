@@ -266,13 +266,14 @@ def _normalize_and_validate_instagram(raw: str) -> str | None:
 
 
 def _resolve_browser_uid_lock(request: Request, submitted_uid_raw: str) -> tuple[str | None, str | None, str | None, str | None]:
-    locked_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "")
+    cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "")
     submitted_uid = _normalize_and_validate_instagram(submitted_uid_raw)
     if not submitted_uid:
-        return locked_uid, submitted_uid, None, "invalid_user_id"
-    if locked_uid and submitted_uid.lower() != locked_uid.lower():
-        return locked_uid, submitted_uid, None, "locked_browser_uid_mismatch"
-    return locked_uid, submitted_uid, (locked_uid or submitted_uid), None
+        return cookie_uid, submitted_uid, None, "invalid_user_id"
+    has_active_plan = bool(_get_active_plan(cookie_uid)) if cookie_uid else False
+    if has_active_plan and submitted_uid.lower() != cookie_uid.lower():
+        return cookie_uid, submitted_uid, None, "locked_browser_uid_mismatch"
+    return cookie_uid, submitted_uid, submitted_uid, None
 
 
 def _get_active_plan(user_id: str | None) -> dict | None:
@@ -450,7 +451,7 @@ def index(request: Request):
                 "selected_restaurant_id": selected_restaurant_param,
                 "ref": ref_param,
                 "user_id": cookie_uid,
-                "locked_uid": cookie_uid,
+                "locked_uid": cookie_uid if active_plan else "",
                 "msg": msg,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
@@ -521,17 +522,16 @@ def waiting_publish_api(request: Request, body: PublishSlotIn):
     if not FEATURE_WAITING_BOARD:
         raise HTTPException(status_code=404, detail="feature_disabled")
 
-    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, body.user_id)
+    _locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, body.user_id)
     if lock_err == "locked_browser_uid_mismatch":
-        locked_display = normalize_instagram(locked_uid or "")
-        detail = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        detail = "V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan."
         return JSONResponse(
             status_code=409,
             content={
                 "ok": False,
                 "error": "locked_browser_uid_mismatch",
                 "message": detail,
-                "locked_uid": locked_display,
+                "locked_uid": "",
             },
         )
 
@@ -905,6 +905,7 @@ def done_screen(
 
     cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "") or ""
     prefill_user_id = cookie_uid
+    cookie_active_plan = _get_active_plan(cookie_uid)
     members = engine.get_waiting_members(restaurant_id_norm, selected_time)
     members_norm = [normalize_instagram(m or "") for m in members if normalize_instagram(m or "")]
     known_uid_norm = normalize_instagram(prefill_user_id).lower()
@@ -923,7 +924,7 @@ def done_screen(
                 "primary_other": "@" + join_primary_other.lstrip("@") if join_primary_other else "",
                 "other_count": join_other_count,
                 "prefill_user_id": prefill_user_id,
-                "locked_uid": prefill_user_id,
+                "locked_uid": prefill_user_id if cookie_active_plan else "",
                 "join_api_payload": {"restaurant_id": restaurant_id_norm, "go_time": selected_go_time},
                 "join_target_instagram_url": f"https://instagram.com/{quote(join_primary_other)}" if join_primary_other else "",
             },
@@ -994,10 +995,9 @@ def waiting_join(
 ):
     if not FEATURE_WAITING_BOARD:
         return RedirectResponse(url="/", status_code=303)
-    locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, user_id)
+    _locked_uid, _submitted_uid, effective_uid, lock_err = _resolve_browser_uid_lock(request, user_id)
     if lock_err == "locked_browser_uid_mismatch":
-        locked_display = normalize_instagram(locked_uid or "")
-        msg = f"Ta brskalnik je vezan na @{locked_display}. Najprej prekliči trenutni plan, če želiš zamenjati IG."
+        msg = "V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan."
         back = _with_query(
             "/",
             go_time=go_time,
