@@ -437,6 +437,7 @@ def index(request: Request):
 
         cookie_uid = _normalize_and_validate_instagram(request.cookies.get("bb_uid") or "") or ""
         active_plan = _get_active_plan(cookie_uid)
+        has_active_plans = engine.get_total_waiting_all() > 0
 
         return render_template(
             request,
@@ -453,6 +454,7 @@ def index(request: Request):
                 "msg": msg,
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
+                "has_active_plans": has_active_plans,
             },
         )
     return render_template(

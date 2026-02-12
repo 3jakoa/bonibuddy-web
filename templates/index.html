@@ -253,11 +253,14 @@
     .publish-status--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
     .btn[disabled]{background:#9FCBDE; border-color:#9FCBDE; color:#ffffff; cursor:not-allowed;}
     .live-feed-icon{position:absolute; top:14px; right:14px; display:inline-flex; justify-content:center; align-items:center; width:40px; height:40px; border-radius:50%; border:1.25px solid var(--accent); background: rgba(0,166,246,0.08); color: var(--accent); text-decoration:none; box-shadow:none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;}
+    .live-feed-icon::after{content:''; position:absolute; width:8px; height:8px; border-radius:999px; top:5px; right:5px; background: var(--accent); border:1.5px solid #ffffff; opacity:0; transform:scale(0.75); transition:opacity 0.2s ease, transform 0.2s ease;}
+    .live-feed-icon--has-dot::after{opacity:1; transform:scale(1);}
     .live-feed-icon:hover, .live-feed-icon:focus{background: var(--accent); color:#ffffff; box-shadow: 0 8px 18px rgba(0,166,246,0.25); outline:none;}
     .live-feed-icon:active{transform: scale(0.97); background:#008ed5; color:#ffffff;}
     .live-feed-icon svg{width:18px; height:18px; display:block; fill:currentColor;}
     @media (max-width: 480px){
       .live-feed-icon{width:36px; height:36px; top:12px; right:12px;}
+      .live-feed-icon::after{width:7px; height:7px; top:4px; right:4px;}
       .logo-placeholder{width:84px; height:84px;}
     }
   </style>
@@ -266,7 +269,7 @@
 <body>
   <div class="card">
     {% if feature_waiting_board %}
-      <a class="live-feed-icon" href="/feed" aria-label="Live feed" title="Live feed">
+      <a id="liveFeedIcon" class="live-feed-icon{% if has_active_plans %} live-feed-icon--has-dot{% endif %}" href="/feed" aria-label="Live feed" title="Live feed">
         <svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">
           <rect width="256" height="256" fill="none"/>
           <path d="M96,192a32,32,0,0,0,64,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
@@ -404,7 +407,9 @@
     const DEFAULT_HINT = 'Dovoljeni znaki: črke, številke, pika in podčrtaj.';
     const LOCKED_UID = {{ (locked_uid or "") | tojson }};
     const LOCKED_HINT = LOCKED_UID ? `Brskalnik je trenutno vezan na @${LOCKED_UID}.` : '';
+    const INITIAL_HAS_ACTIVE_PLANS = {{ has_active_plans | tojson }};
 
+    const liveFeedIcon = document.getElementById('liveFeedIcon');
     const form = document.getElementById('publishForm');
     const goTimeInput = document.getElementById('goTimeInput');
     const windowLabel = document.getElementById('windowLabel');
@@ -427,6 +432,23 @@
     let selectedRestaurant = restaurants.find(item => item.id === selectedRestaurantIdInput.value) || null;
     let isSubmitting = false;
     let searchEventSent = false;
+
+    function setLiveFeedDot(isActive) {
+      if (!liveFeedIcon) return;
+      liveFeedIcon.classList.toggle('live-feed-icon--has-dot', !!isActive);
+    }
+
+    async function refreshLiveFeedDot() {
+      try {
+        const res = await fetch('/api/feed');
+        if (!res.ok) return;
+        const data = await res.json();
+        const hasItems = Array.isArray(data.items) && data.items.length > 0;
+        setLiveFeedDot(hasItems);
+      } catch (e) {
+        // keep last known state on polling failures
+      }
+    }
 
     function normalizeInstagram(value) {
       return (value || '').trim().replace(/^@+/, '');
@@ -670,6 +692,7 @@
         }
         userIdInput.value = data.user_id || normalizedUser;
         if (data.window_label) windowLabel.textContent = data.window_label;
+        setLiveFeedDot(true);
         renderSelectedCard();
         setStatus(data.message || 'Plan objavljen.', false);
         syncUrlState();
@@ -685,6 +708,8 @@
       const label = windowLabelFrom(goTimeInput.value);
       if (label) windowLabel.textContent = label;
     }
+    setLiveFeedDot(INITIAL_HAS_ACTIVE_PLANS);
+    setInterval(refreshLiveFeedDot, 10000);
     renderSelectedCard();
     if (!selectedRestaurant) {
       suggestions.hidden = true;
