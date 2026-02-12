@@ -15,6 +15,11 @@ import engine_web as engine
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# i18n configuration
+LOCALES_DIR = BASE_DIR / "locales"
+DEFAULT_LOCALE = "sl"
+SUPPORTED_LOCALES = {"sl", "en"}
+
 app = FastAPI()
 
 # Default the waiting board experience ON; can still be disabled via env.
