@@ -367,7 +367,8 @@ def join_slot(*, user_id: str, restaurant_id: str, target_time: datetime, referr
     user_norm = _normalize_instagram(user_id)
     target_time_utc = _to_utc(target_time)
     now = datetime.now(timezone.utc)
-    if target_time_utc < now.replace(second=0, microsecond=0):
+    floor_now = now.replace(second=0, microsecond=0)
+    if target_time_utc + timedelta(minutes=ACTIVE_WINDOW_MINUTES) <= floor_now:
         return {"ok": False, "error": "go_time_in_past"}
 
     cleanup_waiting_board()

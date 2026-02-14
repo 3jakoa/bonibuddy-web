@@ -92,6 +92,7 @@ def _resolve_selected_go_time(
     go_time_raw: str | None,
     legacy_t_raw: str | None = None,
     allow_past: bool = False,
+    allow_recent_past_minutes: int | None = None,
     default_to_now: bool = True,
 ) -> tuple[datetime | None, str | None, bool, str | None]:
     now_local = _now_local()
@@ -116,7 +117,11 @@ def _resolve_selected_go_time(
 
     floor_now = now_local.replace(second=0, microsecond=0)
     if not allow_past and selected < floor_now:
-        return None, _format_go_time(_default_go_time(now_local=now_local)), source_legacy, "past_time"
+        if allow_recent_past_minutes is None:
+            return None, _format_go_time(_default_go_time(now_local=now_local)), source_legacy, "past_time"
+        window_end = selected + timedelta(minutes=max(allow_recent_past_minutes, 0))
+        if window_end <= floor_now:
+            return None, _format_go_time(_default_go_time(now_local=now_local)), source_legacy, "past_time"
 
     return selected, _format_go_time(selected), source_legacy, None
 
@@ -324,14 +329,17 @@ def _publish_waiting_slot(
     selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
         go_time_raw=go_time_raw,
         allow_past=False,
+        allow_recent_past_minutes=ACTIVE_WINDOW_MINUTES,
         default_to_now=False,
     )
     if err or not selected_time or not selected_go_time:
         return None, "invalid_go_time"
 
     existing_plan = engine.get_user_membership(user_id)
-    if existing_plan and existing_plan.get("restaurant_id") != restaurant_id_norm:
-        return None, "active_plan_exists"
+    if existing_plan:
+        existing_restaurant_id = (existing_plan.get("restaurant_id") or "").strip().lower()
+        if existing_restaurant_id and existing_restaurant_id != restaurant_id_norm:
+            engine.leave_slot(user_id=user_id, restaurant_id=existing_restaurant_id)
 
     res = engine.join_slot(
         user_id=user_id,
@@ -396,6 +404,7 @@ def index(request: Request):
             go_time_raw=request.query_params.get("go_time"),
             legacy_t_raw=request.query_params.get("t"),
             allow_past=False,
+            allow_recent_past_minutes=ACTIVE_WINDOW_MINUTES,
             default_to_now=True,
         )
         msg = (request.query_params.get("msg") or "").strip()
@@ -548,9 +557,6 @@ def waiting_publish_api(request: Request, body: PublishSlotIn):
             detail = "Vpiši veljavno Instagram uporabniško ime."
         elif err == "invalid_go_time":
             detail = "Izberi prihodnji čas odhoda."
-        elif err == "active_plan_exists":
-            detail = "Imaš že aktiven plan. Najprej ga prekliči."
-            status_code = 409
         elif err == "restaurant_not_found":
             detail = "Restavracija ni bila najdena."
             status_code = 404
@@ -602,6 +608,7 @@ def waiting_quick_join(
     _selected_time, selected_go_time, _mapped_legacy, err = _resolve_selected_go_time(
         go_time_raw=go_time,
         allow_past=False,
+        allow_recent_past_minutes=ACTIVE_WINDOW_MINUTES,
         default_to_now=False,
     )
     if err or not selected_go_time:
@@ -626,8 +633,6 @@ def waiting_quick_join(
         msg = "Pridružitev ni uspela."
         if publish_err == "invalid_go_time":
             msg = "Neveljaven čas."
-        elif publish_err == "active_plan_exists":
-            msg = "Imaš že aktiven plan. Najprej ga prekliči."
         elif publish_err == "restaurant_not_found":
             msg = "Restavracija ni bila najdena."
         elif publish_err == "invalid_user_id":
@@ -1019,8 +1024,6 @@ def waiting_join(
             msg = "Vpiši veljavno Instagram uporabniško ime."
         elif err == "invalid_go_time":
             msg = "Izberi prihodnji čas odhoda."
-        elif err == "active_plan_exists":
-            msg = "Imaš že aktiven plan. Najprej ga prekliči."
         elif err == "restaurant_not_found":
             msg = "Restavracija ni bila najdena."
         back = _with_query(
