@@ -251,6 +251,9 @@
     .hint--error{color:#991b1b;}
     .publish-status{border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px; font-size:13px;}
     .publish-status--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
+    .push-optin{margin-top:8px; border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px;}
+    .push-optin[hidden]{display:none !important;}
+    .push-optin .hint{margin-top:8px;}
     .btn[disabled]{background:#9FCBDE; border-color:#9FCBDE; color:#ffffff; cursor:not-allowed;}
     .live-feed-icon{position:absolute; top:14px; right:14px; display:inline-flex; justify-content:center; align-items:center; width:40px; height:40px; border-radius:50%; border:1.25px solid var(--accent); background: rgba(0,166,246,0.08); color: var(--accent); text-decoration:none; box-shadow:none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;}
     .live-feed-icon::after{content:''; position:absolute; width:8px; height:8px; border-radius:999px; top:5px; right:5px; background: var(--accent); border:1.5px solid #ffffff; opacity:0; transform:scale(0.75); transition:opacity 0.2s ease, transform 0.2s ease;}
@@ -350,6 +353,10 @@
           <div id="igHint" class="hint">Dovoljeni znaki: črke, številke, pika in podčrtaj.</div>
           <button id="publishBtn" class="btn" type="submit" disabled>Potrdi</button>
           <div id="publishStatus" class="publish-status" hidden></div>
+          <div id="pushOptInRow" class="push-optin" hidden>
+            <button id="enablePushBtn" class="btn" type="button">🔔 Vključi obvestila</button>
+            <div id="pushOptInHint" class="hint"></div>
+          </div>
         </form>
       </div>
     {% else %}
@@ -428,6 +435,9 @@
     const userIdInput = document.getElementById('userIdInput');
     const publishBtn = document.getElementById('publishBtn');
     const publishStatus = document.getElementById('publishStatus');
+    const pushOptInRow = document.getElementById('pushOptInRow');
+    const enablePushBtn = document.getElementById('enablePushBtn');
+    const pushOptInHint = document.getElementById('pushOptInHint');
     const refInput = document.getElementById('refInput');
     const igHint = document.getElementById('igHint');
     if (!form || !goTimeInput || !windowLabel || !selectedRestaurantIdInput || !searchInput || !suggestions || !selectedCard || !selectedName || !selectedSub || !changeBtn || !userIdInput || !publishBtn || !publishStatus || !refInput || !igHint || !inputWrap || !noResults) return;
@@ -485,9 +495,6 @@
 
         try {
           await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-          if (Notification.permission === 'default') {
-            try { await Notification.requestPermission(); } catch (_err) {}
-          }
           if (Notification.permission !== 'granted') return;
 
           const reg = await navigator.serviceWorker.ready;
@@ -520,6 +527,43 @@
       });
 
       return pushRegisterInFlight;
+    }
+
+    function updatePushOptInUI() {
+      if (!pushOptInRow || !enablePushBtn || !pushOptInHint) return;
+      const supported = PUSH_ENABLED && !!VAPID_PUBLIC_KEY && isStandaloneApp() && notificationsSupported() && pushSupported();
+      if (!supported) {
+        pushOptInRow.hidden = true;
+        return;
+      }
+
+      pushOptInRow.hidden = false;
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        enablePushBtn.hidden = true;
+        pushOptInHint.textContent = 'Obvestila so vključena ✅';
+      } else if (perm === 'denied') {
+        enablePushBtn.hidden = true;
+        pushOptInHint.textContent = 'Obvestila so blokirana v nastavitvah naprave.';
+      } else {
+        enablePushBtn.hidden = false;
+        pushOptInHint.textContent = 'Klikni za vklop native obvestil v aplikaciji.';
+      }
+    }
+
+    async function requestPushPermissionFromUserGesture() {
+      if (!PUSH_ENABLED || !VAPID_PUBLIC_KEY) return;
+      if (!isStandaloneApp() || !notificationsSupported() || !pushSupported()) return;
+      try {
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          await ensurePwaPushRegistration(userIdInput.value);
+        }
+      } catch (_err) {
+        // best-effort
+      }
+      updatePushOptInUI();
     }
 
     function setLiveFeedDot(isActive) {
@@ -740,7 +784,14 @@
       updateIgHint();
       updateButtonState();
       ensurePwaPushRegistration(userIdInput.value);
+      updatePushOptInUI();
     });
+
+    if (enablePushBtn) {
+      enablePushBtn.addEventListener('click', () => {
+        requestPushPermissionFromUserGesture();
+      });
+    }
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -783,6 +834,7 @@
         }
         userIdInput.value = data.user_id || normalizedUser;
         await ensurePwaPushRegistration(userIdInput.value);
+        updatePushOptInUI();
         if (data.window_label) windowLabel.textContent = data.window_label;
         setLiveFeedDot(true);
         renderSelectedCard();
@@ -811,6 +863,7 @@
     updateButtonState();
     syncUrlState();
     ensurePwaPushRegistration(userIdInput.value);
+    updatePushOptInUI();
   })();
 {% endif %}
 </script>
