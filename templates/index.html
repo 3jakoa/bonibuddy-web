@@ -393,7 +393,7 @@
   // Service worker (best-effort)
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js').catch(() => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
         // best-effort; do nothing if SW registration fails
       });
     });
@@ -408,6 +408,9 @@
     const LOCKED_UID = {{ (locked_uid or "") | tojson }};
     const LOCKED_HINT = LOCKED_UID ? 'V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan.' : '';
     const INITIAL_HAS_ACTIVE_PLANS = {{ has_active_plans | tojson }};
+    const PUSH_ENABLED = {{ push_slot_notifications_enabled | tojson }};
+    const VAPID_PUBLIC_KEY = {{ (vapid_public_key or "") | tojson }};
+    const PUSH_DEVICE_ID_KEY = 'bb_push_device_id_v1';
 
     const liveFeedIcon = document.getElementById('liveFeedIcon');
     const form = document.getElementById('publishForm');
@@ -432,6 +435,92 @@
     let selectedRestaurant = restaurants.find(item => item.id === selectedRestaurantIdInput.value) || null;
     let isSubmitting = false;
     let searchEventSent = false;
+    let pushRegisterInFlight = null;
+    let pushRegistrationKey = '';
+
+    function isStandaloneApp() {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+        (navigator.standalone === true);
+    }
+
+    function notificationsSupported() {
+      return 'Notification' in window;
+    }
+
+    function pushSupported() {
+      return ('serviceWorker' in navigator) && ('PushManager' in window);
+    }
+
+    function getOrCreatePushDeviceId() {
+      try {
+        const existing = localStorage.getItem(PUSH_DEVICE_ID_KEY);
+        if (existing) return existing;
+        const created = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `bb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem(PUSH_DEVICE_ID_KEY, created);
+        return created;
+      } catch (_err) {
+        return `bb-fallback-${Date.now().toString(36)}`;
+      }
+    }
+
+    function decodeVapidPublicKey(base64Url) {
+      const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
+      const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64);
+      return new Uint8Array([...raw].map(ch => ch.charCodeAt(0)));
+    }
+
+    async function ensurePwaPushRegistration(currentUserIdRaw) {
+      if (!PUSH_ENABLED || !VAPID_PUBLIC_KEY) return;
+      if (!isStandaloneApp() || !notificationsSupported() || !pushSupported()) return;
+      if (pushRegisterInFlight) return pushRegisterInFlight;
+
+      pushRegisterInFlight = (async () => {
+        const normalizedUser = normalizeInstagram(currentUserIdRaw || '').toLowerCase();
+        const deviceId = getOrCreatePushDeviceId();
+        const registrationKey = `${deviceId}:${normalizedUser}`;
+        if (registrationKey && pushRegistrationKey === registrationKey) return;
+
+        try {
+          await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          if (Notification.permission === 'default') {
+            try { await Notification.requestPermission(); } catch (_err) {}
+          }
+          if (Notification.permission !== 'granted') return;
+
+          const reg = await navigator.serviceWorker.ready;
+          let subscription = await reg.pushManager.getSubscription();
+          if (!subscription) {
+            subscription = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: decodeVapidPublicKey(VAPID_PUBLIC_KEY),
+            });
+          }
+
+          const res = await fetch('/api/push/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription,
+              device_id: deviceId,
+              user_id: normalizedUser || null,
+              client_mode: 'standalone',
+            }),
+          });
+          if (res.ok) {
+            pushRegistrationKey = registrationKey;
+          }
+        } catch (_err) {
+          // best-effort
+        }
+      })().finally(() => {
+        pushRegisterInFlight = null;
+      });
+
+      return pushRegisterInFlight;
+    }
 
     function setLiveFeedDot(isActive) {
       if (!liveFeedIcon) return;
@@ -650,6 +739,7 @@
       userIdInput.value = normalizeInstagram(userIdInput.value);
       updateIgHint();
       updateButtonState();
+      ensurePwaPushRegistration(userIdInput.value);
     });
 
     form.addEventListener('submit', async (event) => {
@@ -671,12 +761,13 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            restaurant_id: selectedRestaurant.id,
-            go_time: goTimeInput.value,
-            user_id: normalizedUser,
-            ref: (refInput.value || '').trim() || null,
-          }),
-        });
+              restaurant_id: selectedRestaurant.id,
+              go_time: goTimeInput.value,
+              user_id: normalizedUser,
+              ref: (refInput.value || '').trim() || null,
+              device_id: getOrCreatePushDeviceId(),
+            }),
+          });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
           const lockedMismatch = data.error === 'locked_browser_uid_mismatch';
@@ -691,6 +782,7 @@
           });
         }
         userIdInput.value = data.user_id || normalizedUser;
+        await ensurePwaPushRegistration(userIdInput.value);
         if (data.window_label) windowLabel.textContent = data.window_label;
         setLiveFeedDot(true);
         renderSelectedCard();
@@ -718,6 +810,7 @@
     updateIgHint();
     updateButtonState();
     syncUrlState();
+    ensurePwaPushRegistration(userIdInput.value);
   })();
 {% endif %}
 </script>

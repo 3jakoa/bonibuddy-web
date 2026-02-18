@@ -346,6 +346,80 @@
     </div>
   </div>
   <script>
+    const PUSH_ENABLED = {{ push_slot_notifications_enabled | tojson }};
+    const VAPID_PUBLIC_KEY = {{ (vapid_public_key or "") | tojson }};
+    const PUSH_DEVICE_ID_KEY = 'bb_push_device_id_v1';
+
+    function isStandaloneApp() {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+        (navigator.standalone === true);
+    }
+
+    function pushSupported() {
+      return ('serviceWorker' in navigator) && ('PushManager' in window);
+    }
+
+    function notificationsSupported() {
+      return 'Notification' in window;
+    }
+
+    function normalizeInstagram(value) {
+      return (value || '').trim().replace(/^@+/, '');
+    }
+
+    function getOrCreatePushDeviceId() {
+      try {
+        const existing = localStorage.getItem(PUSH_DEVICE_ID_KEY);
+        if (existing) return existing;
+        const created = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `bb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem(PUSH_DEVICE_ID_KEY, created);
+        return created;
+      } catch (_err) {
+        return `bb-fallback-${Date.now().toString(36)}`;
+      }
+    }
+
+    function decodeVapidPublicKey(base64Url) {
+      const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
+      const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64);
+      return new Uint8Array([...raw].map(ch => ch.charCodeAt(0)));
+    }
+
+    async function ensurePwaPushRegistration(userIdRaw) {
+      if (!PUSH_ENABLED || !VAPID_PUBLIC_KEY) return;
+      if (!isStandaloneApp() || !pushSupported() || !notificationsSupported()) return;
+      try {
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        if (Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch (_err) {}
+        }
+        if (Notification.permission !== 'granted') return;
+        const reg = await navigator.serviceWorker.ready;
+        let subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: decodeVapidPublicKey(VAPID_PUBLIC_KEY),
+          });
+        }
+        await fetch('/api/push/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription,
+            device_id: getOrCreatePushDeviceId(),
+            user_id: normalizeInstagram(userIdRaw || '') || null,
+            client_mode: 'standalone',
+          }),
+        });
+      } catch (_err) {
+        // best-effort
+      }
+    }
+
     (function(){
       const btn = document.getElementById('joinAndContactBtn');
       if(!btn) return;
@@ -359,10 +433,6 @@
       const defaultHint = 'Vpiši svoj Instagram za pridružitev.';
       const lockedHint = 'V tem brskalniku imaš aktiven plan. Za zamenjavo najprej prekliči trenutni plan.';
       let isSubmitting = false;
-
-      function normalizeInstagram(value){
-        return (value || '').trim().replace(/^@+/, '');
-      }
 
       function isValidInstagram(value){
         return INSTAGRAM_RE.test(normalizeInstagram(value));
@@ -410,6 +480,7 @@
       userInput.addEventListener('blur', () => {
         userInput.value = normalizeInstagram(userInput.value);
         updateState();
+        ensurePwaPushRegistration(userInput.value);
       });
 
       btn.addEventListener('click', async () => {
@@ -434,6 +505,7 @@
               restaurant_id: restaurantId,
               go_time: goTime,
               user_id: normalized,
+              device_id: getOrCreatePushDeviceId(),
             }),
           });
           const data = await res.json().catch(() => ({}));
@@ -446,6 +518,7 @@
           doneUrl.searchParams.set('go_time', data.go_time || goTime);
           doneUrl.searchParams.set('u', data.user_id || normalized);
           doneUrl.searchParams.set('created', '0');
+          await ensurePwaPushRegistration(data.user_id || normalized);
           window.location.assign(doneUrl.toString());
         }catch(_err){
           setStatus('Prišlo je do napake. Poskusi znova.', true);
@@ -456,6 +529,7 @@
       });
 
       updateState();
+      ensurePwaPushRegistration(userInput.value);
     })();
 
     (function(){
@@ -497,6 +571,8 @@
         setTimeout(() => { btn.textContent = original; }, 2200);
       });
     })();
+
+    ensurePwaPushRegistration({{ (user_id or prefill_user_id or "") | tojson }});
   </script>
 </body>
 </html>
