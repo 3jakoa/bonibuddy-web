@@ -179,6 +179,8 @@
     .status-box[hidden]{display:none !important;}
     .push-optin-row{width:100%; max-width:320px; margin-top:8px;}
     .push-optin-row .hint{margin-top:8px;}
+    .push-optin-row--granted{border:none; background:transparent; color:var(--muted); padding:2px 2px 0; margin-top:6px; font-size:12px;}
+    .push-optin-row--granted .hint{margin-top:0; color:var(--muted); font-size:12px;}
     .btn[disabled]{background:#A7D7EC; border-color:#A7D7EC; color:#f8fcff; cursor:not-allowed; box-shadow:none; filter:saturate(0.85);}
     .btn:active{transform:scale(0.98);}
     @keyframes summary-enter{
@@ -432,6 +434,7 @@
       const supported = PUSH_ENABLED && !!VAPID_PUBLIC_KEY && isStandaloneApp() && pushSupported() && notificationsSupported();
       if (!supported) {
         row.hidden = true;
+        row.classList.remove('push-optin-row--granted');
         return;
       }
 
@@ -439,12 +442,15 @@
       const perm = Notification.permission;
       if (perm === 'granted') {
         btn.hidden = true;
-        hint.textContent = 'Obvestila so vključena ✅';
+        row.classList.add('push-optin-row--granted');
+        hint.textContent = 'Obvestila vklopljena';
       } else if (perm === 'denied') {
         btn.hidden = true;
+        row.classList.remove('push-optin-row--granted');
         hint.textContent = 'Obvestila so blokirana v nastavitvah naprave.';
       } else {
         btn.hidden = false;
+        row.classList.remove('push-optin-row--granted');
         hint.textContent = 'Klikni za vklop native obvestil v aplikaciji.';
       }
     }
