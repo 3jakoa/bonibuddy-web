@@ -43,7 +43,7 @@ self.addEventListener('push', event => {
 
   const title = data.title || 'BoniBuddy';
   const options = {
-    body: data.body || 'Našli smo družbo! Odpri app.',
+    body: data.body || 'Nekdo je objavil nov plan. Odpri app in se pridruži.',
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-192.png',
     data: {

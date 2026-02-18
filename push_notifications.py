@@ -442,12 +442,29 @@ class PushNotificationService:
         return True
 
     def _build_slot_payload(self, restaurant_id: str, go_time: str) -> dict[str, Any]:
-        label = (restaurant_id or "").replace("_", " ").replace("-", " ").strip().title()
+        label = self._usable_restaurant_label(restaurant_id)
+        go_time_norm = (go_time or "").strip()
+        if label and go_time_norm:
+            body = f"Nekdo gre v {label} ob {go_time_norm}. Pridruži se."
+        elif go_time_norm:
+            body = f"Nekdo gre na bone ob {go_time_norm}. Pridruži se."
+        else:
+            body = "Nekdo je objavil nov plan. Odpri app in se pridruži."
         return {
             "title": "BoniBuddy",
-            "body": f"Nov slot: {label} ob {go_time}. Odpri app in se pridruži.",
+            "body": body,
             "url": "/feed",
         }
+
+    @staticmethod
+    def _usable_restaurant_label(raw: str) -> str | None:
+        label = (raw or "").replace("_", " ").replace("-", " ").strip()
+        label = " ".join(label.split())
+        if not label:
+            return None
+        if not any(ch.isalpha() for ch in label):
+            return None
+        return label
 
     def _send_with_webpush(self, subscription: dict[str, Any], payload: dict[str, Any]) -> None:
         if not (self.vapid_private_key and self.vapid_subject):
