@@ -177,6 +177,8 @@
     .status-box{width:100%; max-width:320px; border:1px solid rgba(0,166,246,0.22); background:#EAF7FD; color:#065f86; padding:10px 12px; border-radius:12px; font-size:13px;}
     .status-box--error{border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.12); color:#991b1b;}
     .status-box[hidden]{display:none !important;}
+    .push-optin-row{width:100%; max-width:320px; margin-top:8px;}
+    .push-optin-row .hint{margin-top:8px;}
     .btn[disabled]{background:#A7D7EC; border-color:#A7D7EC; color:#f8fcff; cursor:not-allowed; box-shadow:none; filter:saturate(0.85);}
     .btn:active{transform:scale(0.98);}
     @keyframes summary-enter{
@@ -342,6 +344,10 @@
             <a class="action-link" href="/">Nazaj na pregled</a>
           </div>
         {% endif %}
+        <div id="pushOptInRow" class="status-box push-optin-row" hidden>
+          <button id="enablePushBtn" class="btn" type="button">🔔 Vključi obvestila</button>
+          <div id="pushOptInHint" class="hint"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -393,9 +399,6 @@
       if (!isStandaloneApp() || !pushSupported() || !notificationsSupported()) return;
       try {
         await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-        if (Notification.permission === 'default') {
-          try { await Notification.requestPermission(); } catch (_err) {}
-        }
         if (Notification.permission !== 'granted') return;
         const reg = await navigator.serviceWorker.ready;
         let subscription = await reg.pushManager.getSubscription();
@@ -418,6 +421,47 @@
       } catch (_err) {
         // best-effort
       }
+    }
+
+    function updatePushOptInUI() {
+      const row = document.getElementById('pushOptInRow');
+      const btn = document.getElementById('enablePushBtn');
+      const hint = document.getElementById('pushOptInHint');
+      if (!row || !btn || !hint) return;
+
+      const supported = PUSH_ENABLED && !!VAPID_PUBLIC_KEY && isStandaloneApp() && pushSupported() && notificationsSupported();
+      if (!supported) {
+        row.hidden = true;
+        return;
+      }
+
+      row.hidden = false;
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        btn.hidden = true;
+        hint.textContent = 'Obvestila so vključena ✅';
+      } else if (perm === 'denied') {
+        btn.hidden = true;
+        hint.textContent = 'Obvestila so blokirana v nastavitvah naprave.';
+      } else {
+        btn.hidden = false;
+        hint.textContent = 'Klikni za vklop native obvestil v aplikaciji.';
+      }
+    }
+
+    async function requestPushPermissionFromUserGesture(userIdRaw) {
+      if (!PUSH_ENABLED || !VAPID_PUBLIC_KEY) return;
+      if (!isStandaloneApp() || !pushSupported() || !notificationsSupported()) return;
+      try {
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          await ensurePwaPushRegistration(userIdRaw);
+        }
+      } catch (_err) {
+        // best-effort
+      }
+      updatePushOptInUI();
     }
 
     (function(){
@@ -481,6 +525,7 @@
         userInput.value = normalizeInstagram(userInput.value);
         updateState();
         ensurePwaPushRegistration(userInput.value);
+        updatePushOptInUI();
       });
 
       btn.addEventListener('click', async () => {
@@ -519,6 +564,7 @@
           doneUrl.searchParams.set('u', data.user_id || normalized);
           doneUrl.searchParams.set('created', '0');
           await ensurePwaPushRegistration(data.user_id || normalized);
+          updatePushOptInUI();
           window.location.assign(doneUrl.toString());
         }catch(_err){
           setStatus('Prišlo je do napake. Poskusi znova.', true);
@@ -530,6 +576,7 @@
 
       updateState();
       ensurePwaPushRegistration(userInput.value);
+      updatePushOptInUI();
     })();
 
     (function(){
@@ -572,7 +619,19 @@
       });
     })();
 
-    ensurePwaPushRegistration({{ (user_id or prefill_user_id or "") | tojson }});
+    (function() {
+      const currentUser = {{ (user_id or prefill_user_id or "") | tojson }};
+      const enableBtn = document.getElementById('enablePushBtn');
+      if (enableBtn) {
+        enableBtn.addEventListener('click', () => {
+          const joinInput = document.getElementById('joinUserInput');
+          const resolvedUser = joinInput ? (joinInput.value || currentUser) : currentUser;
+          requestPushPermissionFromUserGesture(resolvedUser);
+        });
+      }
+      ensurePwaPushRegistration(currentUser);
+      updatePushOptInUI();
+    })();
   </script>
 </body>
 </html>
