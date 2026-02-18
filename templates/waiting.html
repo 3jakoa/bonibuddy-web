@@ -334,11 +334,6 @@
 
           <div id="status" class="muted">Še ni matcha…</div>
 
-          <div class="row" id="notifRow" style="display:none;">
-            <button class="btn" id="enableNotifBtn" type="button">🔔 Obvesti me, ko dobim match</button>
-            <div id="notifHint" class="muted" style="margin-top:10px; font-size:13px;"></div>
-          </div>
-
           <div class="row">
             <a class="link" href="/">Nazaj</a>
           </div>
@@ -349,9 +344,6 @@
 
 {% if not feature_waiting_board %}
 <script>
-  const RID = "{{ rid }}";
-  window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
-
   const waitingStart = Date.now();
   let sentWaitingDuration = false;
 
@@ -375,126 +367,6 @@
   window.addEventListener('pagehide', () => sendWaitingDuration('leave'));
   window.addEventListener('beforeunload', () => sendWaitingDuration('leave'));
 
-  function isStandaloneApp() {
-    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-           (navigator.standalone === true);
-  }
-
-    function notificationsSupported() {
-      return ('Notification' in window);
-    }
-
-    function pushSupported() {
-      return ('serviceWorker' in navigator) && ('PushManager' in window);
-    }
-
-    function updateNotifUI() {
-      const row = document.getElementById('notifRow');
-      const hint = document.getElementById('notifHint');
-      const btn = document.getElementById('enableNotifBtn');
-      if (!row || !hint || !btn) return;
-
-      if (!isStandaloneApp() || !notificationsSupported()) {
-        row.style.display = 'none';
-        return;
-      }
-
-      row.style.display = 'block';
-
-      if (!pushSupported()) {
-        btn.style.display = 'none';
-        hint.textContent = 'Push obvestila niso podprta v tem brskalniku/na tej napravi.';
-        return;
-      }
-
-      if (Notification.permission === 'granted') {
-        btn.style.display = 'none';
-        hint.textContent = 'Obvestila so vključena ✅';
-      } else if (Notification.permission === 'denied') {
-        btn.style.display = 'none';
-        hint.textContent = 'Obvestila so blokirana v nastavitvah brskalnika.';
-      } else {
-        btn.style.display = 'inline-block';
-        hint.textContent = 'Klikni, da ti lahko pošljem obvestilo, ko najdem match.';
-      }
-    }
-
-    async function ensureServiceWorkerRegistered() {
-      try {
-        if (!('serviceWorker' in navigator)) return;
-        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      } catch (e) {}
-    }
-
-    async function bestEffortSubscribePush() {
-      try {
-        await ensureServiceWorkerRegistered();
-        if (!pushSupported() || Notification.permission !== 'granted') return;
-
-        const reg = await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          await fetch('/api/push/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rid: RID, subscription: existing })
-          });
-          return;
-        }
-
-        const vapidPublicKey = window.VAPID_PUBLIC_KEY;
-        if (!vapidPublicKey || typeof vapidPublicKey !== 'string') return;
-
-        const padding = '='.repeat((4 - (vapidPublicKey.length % 4)) % 4);
-        const base64 = (vapidPublicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const raw = atob(base64);
-        const key = new Uint8Array([...raw].map(ch => ch.charCodeAt(0)]);
-
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: key
-        });
-
-        await fetch('/api/push/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rid: RID, subscription })
-        });
-      } catch (e) {}
-    }
-
-    async function enableNotifications() {
-      try {
-        if (!isStandaloneApp() || !notificationsSupported()) return;
-        const perm = await Notification.requestPermission();
-        updateNotifUI();
-        if (perm === 'granted') {
-          try {
-            new Notification('BoniBuddy', { body: 'Obvestila so vključena. Sporočim, ko najdem match.' });
-          } catch (e) {}
-          await bestEffortSubscribePush();
-        }
-      } catch (e) {}
-    }
-
-    const enableBtn = document.getElementById('enableNotifBtn');
-    if (enableBtn) {
-      enableBtn.addEventListener('click', () => {
-        try { gtag('event', 'enable_notifications'); } catch (e) {}
-        enableNotifications();
-      });
-    }
-
-    updateNotifUI();
-
-    (async () => {
-      try {
-        if (isStandaloneApp() && notificationsSupported() && pushSupported() && Notification.permission === 'granted') {
-          await bestEffortSubscribePush();
-        }
-      } catch (e) {}
-    })();
-
     async function poll() {
       const res = await fetch(`/status/{{ rid }}`);
       const data = await res.json();
@@ -503,13 +375,6 @@
         sendWaitingDuration('matched');
         const heading = document.getElementById("heading");
         if (heading) heading.textContent = "✅ Našli smo družbo!";
-        try {
-          if (isStandaloneApp() && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('BoniBuddy', {
-              body: 'Našli smo družbo! Odpri app in pošlji sporočilo na Instagram.'
-            });
-          }
-        } catch (e) {}
 
         const handle = data.other_instagram;
         const msg = `Hej! BoniBuddy naju je povezal za bone ({{ location }}). Greva skupaj {% if time_bucket == "today" %}za večerjo 🍕{% else %}za kosilo 🍝{% endif %}?`;

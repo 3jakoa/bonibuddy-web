@@ -9,8 +9,10 @@ from zoneinfo import ZoneInfo
 from urllib.parse import quote, urlencode
 import os
 import re
+import logging
 
 import engine_web as engine
+from push_notifications import PushNotificationService
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -18,12 +20,15 @@ app = FastAPI()
 
 # Default the waiting board experience ON; can still be disabled via env.
 FEATURE_WAITING_BOARD = os.getenv("FEATURE_WAITING_BOARD", "true").lower() in {"1", "true", "yes"}
+PUSH_SLOT_NOTIFICATIONS_ENABLED = os.getenv("PUSH_SLOT_NOTIFICATIONS_ENABLED", "true").lower() in {"1", "true", "yes"}
+PUSH_NOTIFICATIONS_DB_PATH = os.getenv("PUSH_NOTIFICATIONS_DB_PATH", str(BASE_DIR / "data" / "notifications.sqlite3"))
 IG_USERNAME = "bonibuddy"
 LOCAL_TZ = ZoneInfo("Europe/Ljubljana")
 GO_TIME_STEP_MINUTES = 5
 ACTIVE_WINDOW_MINUTES = 30
 LEGACY_T_OFFSETS = {"now": 0, "30": 30, "60": 60}
 INSTAGRAM_HANDLE_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
+app_logger = logging.getLogger("bonibuddy.app")
 
 
 def _now_local() -> datetime:
@@ -181,24 +186,24 @@ def _get_env(name: str) -> str:
     return v
 
 
-def send_push_to_rid(rid: str, payload: dict) -> bool:
-    """Compatibility wrapper: delegate to engine (engine_web.py)."""
-    try:
-        return bool(engine.send_push_to_rid(rid, payload))
-    except Exception:
-        return False
+PUSH_SERVICE = PushNotificationService(
+    db_path=PUSH_NOTIFICATIONS_DB_PATH,
+    enabled=PUSH_SLOT_NOTIFICATIONS_ENABLED,
+    vapid_private_key=_get_env("VAPID_PRIVATE_KEY"),
+    vapid_subject=_get_env("VAPID_SUBJECT"),
+)
 
 
-class PushSubscribeIn(BaseModel):
-    rid: str
+class PushRegisterIn(BaseModel):
     subscription: dict
+    device_id: str
+    user_id: str | None = None
+    client_mode: str = "standalone"
 
-# Minimal sanity-test endpoint for web push
-class PushTestIn(BaseModel):
-    rid: str
-    title: str | None = None
-    body: str | None = None
-    url: str | None = None
+
+class PushUnregisterIn(BaseModel):
+    device_id: str | None = None
+    subscription: dict | None = None
 
 
 class PublishSlotIn(BaseModel):
@@ -206,42 +211,67 @@ class PublishSlotIn(BaseModel):
     go_time: str
     user_id: str
     ref: str | None = None
+    device_id: str | None = None
 
 
-@app.post("/api/push/subscribe")
-def push_subscribe(body: PushSubscribeIn):
-    rid = (body.rid or "").strip()
-    if not rid:
-        raise HTTPException(status_code=400, detail="Missing rid")
-
-    sub = body.subscription
-    if not isinstance(sub, dict) or not sub.get("endpoint"):
+@app.post("/api/push/register")
+def push_register(body: PushRegisterIn):
+    if not PUSH_SLOT_NOTIFICATIONS_ENABLED:
+        raise HTTPException(status_code=404, detail="feature_disabled")
+    endpoint = body.subscription.get("endpoint") if isinstance(body.subscription, dict) else None
+    if not endpoint:
         raise HTTPException(status_code=400, detail="Invalid subscription")
+    user_id_norm = None
+    if body.user_id:
+        user_id_norm = _normalize_and_validate_instagram(body.user_id)
+        if not user_id_norm:
+            raise HTTPException(status_code=400, detail="Invalid user_id")
+    try:
+        sub_id = PUSH_SERVICE.register_subscription(
+            subscription=body.subscription,
+            device_id=(body.device_id or "").strip(),
+            user_id=user_id_norm,
+            client_mode=(body.client_mode or "").strip().lower(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "subscription_id": sub_id}
 
-    engine.set_push_subscription(rid, sub)
-    return {"ok": True}
 
-# Minimal sanity-test endpoint for web push
-@app.post("/api/push/test")
-def push_test(body: PushTestIn):
-    rid = (body.rid or "").strip()
-    if not rid:
-        raise HTTPException(status_code=400, detail="Missing rid")
-
-    payload = {
-        "title": body.title or "BoniBuddy test",
-        "body": body.body or "Če vidiš to, push dela 🎉",
-        "url": body.url or "/",
-    }
-
-    ok = send_push_to_rid(rid, payload)
-    return {"ok": bool(ok)}
+@app.post("/api/push/unregister")
+def push_unregister(body: PushUnregisterIn):
+    if not PUSH_SLOT_NOTIFICATIONS_ENABLED:
+        raise HTTPException(status_code=404, detail="feature_disabled")
+    endpoint = ""
+    if isinstance(body.subscription, dict):
+        endpoint = (body.subscription.get("endpoint") or "").strip()
+    device_id = (body.device_id or "").strip()
+    if not endpoint and not device_id:
+        raise HTTPException(status_code=400, detail="Missing identifier")
+    try:
+        updated = PUSH_SERVICE.unregister_subscription(device_id=device_id or None, endpoint=endpoint or None)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "updated": updated}
 
 # Use absolute paths so it works reliably on Railway
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # Serve static assets under /static
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+@app.on_event("startup")
+def push_notifications_startup() -> None:
+    if not PUSH_SLOT_NOTIFICATIONS_ENABLED:
+        return
+    PUSH_SERVICE.init_db()
+    PUSH_SERVICE.start_worker()
+
+
+@app.on_event("shutdown")
+def push_notifications_shutdown() -> None:
+    PUSH_SERVICE.stop_worker()
 
 LOCATION_LABELS = {
     "center": "Center",
@@ -336,6 +366,7 @@ def _publish_waiting_slot(
         return None, "invalid_go_time"
 
     existing_plan = engine.get_user_membership(user_id)
+    had_active_plan = existing_plan is not None
     if existing_plan:
         existing_restaurant_id = (existing_plan.get("restaurant_id") or "").strip().lower()
         if existing_restaurant_id and existing_restaurant_id != restaurant_id_norm:
@@ -362,9 +393,37 @@ def _publish_waiting_slot(
             "created_new": created_new,
             "other_count": max(previous_count, 0),
             "window_count": window_count,
+            # "new user + time slot" semantics: only notify when this user had no active plan yet.
+            "trigger_notification": not had_active_plan,
         },
         None,
     )
+
+
+def _enqueue_slot_publish_notifications(
+    *,
+    published: dict[str, str | int | bool],
+    exclude_device_id: str | None = None,
+) -> tuple[int | None, int]:
+    if not PUSH_SLOT_NOTIFICATIONS_ENABLED:
+        return None, 0
+    if not bool(published.get("trigger_notification")):
+        return None, 0
+    try:
+        result = PUSH_SERVICE.create_slot_published_event(
+            restaurant_id=str(published.get("restaurant_id") or ""),
+            go_time=str(published.get("go_time") or ""),
+            publisher_user_id=str(published.get("user_id") or ""),
+            exclude_device_id=(exclude_device_id or "").strip() or None,
+        )
+        return result.event_id, result.targeted
+    except Exception:
+        app_logger.exception(
+            "push_enqueue_failed restaurant_id=%s user_id=%s",
+            published.get("restaurant_id"),
+            published.get("user_id"),
+        )
+        return None, 0
 
 # --- PWA convenience routes (some browsers request these at the root) ---
 @app.get("/manifest.webmanifest")
@@ -465,6 +524,8 @@ def index(request: Request):
                 "ig_username": IG_USERNAME,
                 "active_plan": active_plan,
                 "has_active_plans": has_active_plans,
+                "push_slot_notifications_enabled": PUSH_SLOT_NOTIFICATIONS_ENABLED,
+                "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),
             },
         )
     return render_template(
@@ -572,6 +633,11 @@ def waiting_publish_api(request: Request, body: PublishSlotIn):
     else:
         message = "Plan posodobljen."
 
+    notification_event_id, notifications_targeted = _enqueue_slot_publish_notifications(
+        published=published,
+        exclude_device_id=body.device_id,
+    )
+
     resp = JSONResponse(
         content={
             "ok": True,
@@ -583,6 +649,8 @@ def waiting_publish_api(request: Request, body: PublishSlotIn):
             "other_count": published["other_count"],
             "window_count": published["window_count"],
             "user_id": published["user_id"],
+            "notification_event_id": notification_event_id,
+            "notifications_targeted": notifications_targeted,
         }
     )
     resp.set_cookie(
@@ -638,6 +706,8 @@ def waiting_quick_join(
         elif publish_err == "invalid_user_id":
             msg = "Vpiši veljavno Instagram uporabniško ime."
         return RedirectResponse(url=_with_query("/feed", msg=msg), status_code=303)
+
+    _enqueue_slot_publish_notifications(published=published)
 
     done_url = _with_query(
         f"/done/{published['restaurant_id']}",
@@ -932,6 +1002,8 @@ def done_screen(
                 "locked_uid": prefill_user_id if cookie_active_plan else "",
                 "join_api_payload": {"restaurant_id": restaurant_id_norm, "go_time": selected_go_time},
                 "join_target_instagram_url": f"https://instagram.com/{quote(join_primary_other)}" if join_primary_other else "",
+                "push_slot_notifications_enabled": PUSH_SLOT_NOTIFICATIONS_ENABLED,
+                "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),
             },
         )
 
@@ -986,6 +1058,8 @@ def done_screen(
             "copy_message_for_dm": copy_message_for_dm,
             "copy_invite_message": copy_invite_message,
             "user_id": user,
+            "push_slot_notifications_enabled": PUSH_SLOT_NOTIFICATIONS_ENABLED,
+            "vapid_public_key": _get_env("VAPID_PUBLIC_KEY"),
         },
     )
 
@@ -1034,6 +1108,8 @@ def waiting_join(
             msg=msg,
         )
         return RedirectResponse(url=back, status_code=303)
+
+    _enqueue_slot_publish_notifications(published=published)
 
     back = _with_query(
         "/",

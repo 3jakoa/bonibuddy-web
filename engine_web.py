@@ -892,7 +892,6 @@ def add_request_with_pairs(
         time_bucket,
     )
 
-    push_targets: Optional[List[str]] = None
     match_data: Optional[Dict[str, Any]] = None
 
     with match_lock:
@@ -934,7 +933,6 @@ def add_request_with_pairs(
                 }
                 match_logger.info("match_created rid=%s other_rid=%s location=%s", rid, other_rid, location_norm)
                 match_data = {"status": "matched", "rid": rid, **paired[rid]}
-                push_targets = [rid, other_rid]
                 break
 
         if match_data is None and req.active:
@@ -947,25 +945,6 @@ def add_request_with_pairs(
                 "when": when,
                 "time_bucket": req.time_bucket,
             }
-
-    if push_targets:
-        # Best-effort web push (no PII in payload)
-        payload = {
-            "title": "BoniBuddy",
-            "body": "Našli smo družbo! Odpri app in klikni za WhatsApp.",
-            "url": "/",
-        }
-        logger.info("match_push_attempt rid=%s other_rid=%s", push_targets[0], push_targets[1])
-        send_push_to_rid(push_targets[0], payload)
-        send_push_to_rid(push_targets[1], payload)
-        _ga4_send_event(
-            "match_found",
-            {
-                "city": city,
-                "location": location_norm,
-                "time_bucket": req.time_bucket,
-            },
-        )
 
     return match_data
 
