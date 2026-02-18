@@ -109,6 +109,20 @@ class PushWorkerRetryTests(unittest.TestCase):
         self.assertEqual(queue_row[0], "failed_permanent")
         self.assertEqual(sub_row[0], "inactive")
 
+    def test_slot_payload_uses_restaurant_and_time_copy(self) -> None:
+        payload = self.service._build_slot_payload("Menza XYZ", "14:50")
+        self.assertEqual(payload["title"], "BoniBuddy")
+        self.assertEqual(payload["url"], "/feed")
+        self.assertEqual(payload["body"], "Nekdo gre v Menza XYZ ob 14:50. Pridruži se.")
+
+    def test_slot_payload_falls_back_when_restaurant_is_not_useful(self) -> None:
+        payload = self.service._build_slot_payload("3380", "14:50")
+        self.assertEqual(payload["body"], "Nekdo gre na bone ob 14:50. Pridruži se.")
+
+    def test_slot_payload_falls_back_when_time_missing(self) -> None:
+        payload = self.service._build_slot_payload("Menza XYZ", "")
+        self.assertEqual(payload["body"], "Nekdo je objavil nov plan. Odpri app in se pridruži.")
+
 
 if __name__ == "__main__":
     unittest.main()
