@@ -53,13 +53,6 @@
     .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
     .status{font-size:12px; color: var(--muted);} 
     .error{background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #991b1b; padding: 10px 12px; border-radius: 12px; font-size: 13px;}
-    .my-card{border:1px solid rgba(0,166,246,0.20); border-radius:12px; padding:12px; background:#EAF7FD;}
-    .my-title{font-size:12px; color:var(--muted); margin-bottom:4px;}
-    .my-name{font-size:15px; font-weight:700;}
-    .my-sub{font-size:13px; color:var(--muted); margin-top:2px;}
-    .my-actions{margin-top:10px;}
-    .cancel-btn{border:1px solid var(--accent); background:#ffffff; color:var(--accent); border-radius:10px; padding:8px 10px; font-weight:700; cursor:pointer;}
-    .cancel-btn:hover{background:#EAF7FD;}
   </style>
   {% include "_ga.html" %}
 </head>
@@ -67,30 +60,14 @@
   <div class="card" style="position:relative;">
     <h1>Kdo gre kam?</h1>
     {% if msg %}<div class="error">{{ msg }}</div>{% endif %}
-    {% if active_plan %}
-      <div class="my-card">
-        <div class="my-title">Tvoj session</div>
-        <div class="my-name">{{ active_plan.restaurant.name }}</div>
-        <div class="my-sub">{{ active_plan.window_label }}</div>
-        <div class="my-actions">
-          <form method="post" action="/plan/cancel" style="margin:0;">
-            <input type="hidden" name="restaurant_id" value="{{ active_plan.restaurant.id }}">
-            <input type="hidden" name="next_url" value="/feed">
-            <button class="cancel-btn" type="submit">Prekliči session</button>
-          </form>
-        </div>
-      </div>
-    {% endif %}
     <div id="status" class="status"></div>
     <div id="list" class="list"></div>
-    <div id="empty" class="muted" style="display:none;">Trenutno ni aktivnih kartic drugih uporabnikov.</div>
+    <div id="empty" class="muted" style="display:none;">Trenutno ni aktivnih kartic.</div>
     <a href="/" class="muted" style="font-size:12px; text-decoration:none;">↩ Nazaj</a>
   </div>
 
 <script>
   const INITIAL_ITEMS = {{ items | tojson }};
-  const OWN_RESTAURANT_ID = {{ (active_plan.restaurant.id if active_plan else '') | tojson }};
-  const OWN_GO_TIME = {{ (active_plan.go_time if active_plan else '') | tojson }};
 
   const listEl = document.getElementById('list');
   const emptyEl = document.getElementById('empty');
@@ -98,11 +75,8 @@
 
   function render(items) {
     listEl.innerHTML = '';
-    const safeItems = (items || []).filter(item => {
-      if (!OWN_RESTAURANT_ID || !OWN_GO_TIME) return true;
-      return !(item.restaurant_id === OWN_RESTAURANT_ID && item.go_time === OWN_GO_TIME);
-    });
-    if (!safeItems || safeItems.length === 0) {
+    const safeItems = items || [];
+    if (safeItems.length === 0) {
       emptyEl.style.display = '';
       return;
     }

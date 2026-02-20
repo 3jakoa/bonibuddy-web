@@ -558,13 +558,7 @@ def feed(request: Request):
         return RedirectResponse(url="/", status_code=303)
     cookie_uid = normalize_instagram(request.cookies.get("bb_uid") or "")
     active_plan = _get_active_plan(cookie_uid)
-    own_restaurant = active_plan["restaurant"].id if active_plan else ""
-    own_go_time = active_plan["go_time"] if active_plan else ""
-    items = [
-        item
-        for item in _build_feed_items()
-        if not (own_restaurant and own_go_time and item.get("restaurant_id") == own_restaurant and item.get("go_time") == own_go_time)
-    ]
+    items = _build_feed_items()
     return render_template(
         request,
         "feed.html",

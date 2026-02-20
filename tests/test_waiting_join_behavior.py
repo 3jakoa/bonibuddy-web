@@ -1,4 +1,6 @@
 import unittest
+import json
+import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -42,6 +44,19 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         }
         return Request(scope)
 
+    def _extract_initial_items(self, html: str) -> list[dict]:
+        match = re.search(r"const INITIAL_ITEMS = (.*);", html)
+        self.assertIsNotNone(match, "INITIAL_ITEMS payload missing from /feed response.")
+        payload = match.group(1)
+        parsed = json.loads(payload)
+        self.assertIsInstance(parsed, list)
+        return parsed
+
+    def _valid_publish_go_time(self) -> str:
+        now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
+        selected = app_module._default_go_time(now_local=now_local)
+        return selected.strftime("%H:%M")
+
     def test_recent_past_go_time_is_joinable(self) -> None:
         rid = self._restaurant_ids()[0]
         now_utc = datetime.now(timezone.utc).replace(second=0, microsecond=0)
@@ -67,8 +82,8 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
     def test_publish_auto_switches_to_other_restaurant(self) -> None:
         rid_a, rid_b = self._two_restaurant_ids()
         now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
-        go_a = (now_local + timedelta(minutes=10)).strftime("%H:%M")
-        go_b = (now_local + timedelta(minutes=20)).strftime("%H:%M")
+        go_a = self._valid_publish_go_time()
+        go_b = go_a
 
         published_a, err_a = app_module._publish_waiting_slot(
             restaurant_id=rid_a,
@@ -100,8 +115,12 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
     def test_same_restaurant_time_change_keeps_single_membership(self) -> None:
         rid = self._restaurant_ids()[0]
         now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
-        go_a = (now_local + timedelta(minutes=10)).strftime("%H:%M")
-        go_b = (now_local + timedelta(minutes=20)).strftime("%H:%M")
+        selected_a = app_module._default_go_time(now_local=now_local)
+        selected_b = selected_a + timedelta(minutes=app_module.GO_TIME_STEP_MINUTES)
+        if selected_b.date() != selected_a.date():
+            self.skipTest("Cannot pick two valid future go_times near day boundary.")
+        go_a = selected_a.strftime("%H:%M")
+        go_b = selected_b.strftime("%H:%M")
 
         published_a, err_a = app_module._publish_waiting_slot(
             restaurant_id=rid,
@@ -166,6 +185,78 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         membership = engine.get_user_membership("quickjoin_joiner")
         self.assertIsNotNone(membership)
         self.assertEqual(membership["restaurant_id"], rid)
+
+    def test_feed_hides_my_session_block_for_active_user(self) -> None:
+        rid = self._restaurant_ids()[0]
+        go_time = self._valid_publish_go_time()
+
+        published, err = app_module._publish_waiting_slot(
+            restaurant_id=rid,
+            go_time_raw=go_time,
+            user_id_raw="feed_owner",
+        )
+        self.assertIsNone(err)
+        self.assertIsNotNone(published)
+
+        request = self._request("/feed", cookies={"bb_uid": "feed_owner"})
+        response = app_module.feed(request)
+        html = response.body.decode("utf-8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Tvoj session", html)
+
+    def test_feed_includes_own_card_when_it_is_the_only_active_card(self) -> None:
+        rid = self._restaurant_ids()[0]
+        go_time = self._valid_publish_go_time()
+
+        published, err = app_module._publish_waiting_slot(
+            restaurant_id=rid,
+            go_time_raw=go_time,
+            user_id_raw="feed_self_only",
+        )
+        self.assertIsNone(err)
+        self.assertIsNotNone(published)
+
+        request = self._request("/feed", cookies={"bb_uid": "feed_self_only"})
+        response = app_module.feed(request)
+        html = response.body.decode("utf-8")
+        items = self._extract_initial_items(html)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["restaurant_id"], rid)
+        self.assertEqual(int(items[0]["count"]), 1)
+
+    def test_feed_for_joiner_contains_shared_card_with_both_members(self) -> None:
+        rid = self._restaurant_ids()[0]
+        go_time = self._valid_publish_go_time()
+
+        owner, owner_err = app_module._publish_waiting_slot(
+            restaurant_id=rid,
+            go_time_raw=go_time,
+            user_id_raw="feed_join_owner",
+        )
+        self.assertIsNone(owner_err)
+        self.assertIsNotNone(owner)
+
+        joiner, joiner_err = app_module._publish_waiting_slot(
+            restaurant_id=rid,
+            go_time_raw=go_time,
+            user_id_raw="feed_join_user",
+        )
+        self.assertIsNone(joiner_err)
+        self.assertIsNotNone(joiner)
+
+        request = self._request("/feed", cookies={"bb_uid": "feed_join_user"})
+        response = app_module.feed(request)
+        html = response.body.decode("utf-8")
+        items = self._extract_initial_items(html)
+
+        self.assertEqual(response.status_code, 200)
+        matched = [item for item in items if item["restaurant_id"] == rid and item["go_time"] == go_time]
+        self.assertEqual(len(matched), 1)
+        self.assertEqual(int(matched[0]["count"]), 2)
+        self.assertCountEqual(matched[0]["members"], ["feed_join_owner", "feed_join_user"])
 
 
 if __name__ == "__main__":
