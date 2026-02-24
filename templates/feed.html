@@ -43,14 +43,55 @@
     h1{margin:0; font-size:20px; font-weight:800; text-align:left;}
     .muted{color: var(--muted); font-size:13px;}
     .list{display:flex; flex-direction:column; gap:10px;}
-    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background: #F6FCFF; color: var(--text); text-decoration:none; box-shadow: 0 6px 16px rgba(0,166,246,0.06);} 
-    .rest-row--active{background: #E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);} 
+    .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background:#F6FCFF; color: var(--text); text-decoration:none; box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
+    .rest-row--active{background:#E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);}
     .rest-info{flex:1; min-width:0;}
-    .rest-name{font-size:15px; font-weight:600;}
-    .rest-sub{font-size:13px; color: var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .rest-members{font-size:12px; color: var(--muted); margin-top:4px; white-space:normal; overflow-wrap:anywhere;}
-    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7; white-space:nowrap;}
-    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
+    .top-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      width:100%;
+    }
+    .rest-name{
+      font-size:15px;
+      font-weight:600;
+      min-width:0;
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .rest-time{
+      font-size:15px;
+      font-weight:600;
+      color:var(--text);
+      white-space:nowrap;
+      flex-shrink:0;
+      text-align:right;
+    }
+    .bottom-row{
+      display:flex;
+      justify-content:flex-start;
+      margin-top:8px;
+      width:100%;
+    }
+    .rest-user-pill{
+      display:inline-flex;
+      align-items:center;
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid #05A5F7;
+      background:#05A5F7;
+      color:#FFFFFF;
+      font-size:14px;
+      font-weight:800;
+      line-height:1.1;
+      white-space:nowrap;
+      max-width:70%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
     .status{font-size:12px; color: var(--muted);} 
     .error{background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #991b1b; padding: 10px 12px; border-radius: 12px; font-size: 13px;}
   </style>
@@ -88,29 +129,34 @@
 
       const info = document.createElement('div');
       info.className = 'rest-info';
+      const topEl = document.createElement('div');
+      topEl.className = 'top-row';
       const nameEl = document.createElement('div');
       nameEl.className = 'rest-name';
       nameEl.textContent = item.restaurant_name || '';
-      const subEl = document.createElement('div');
-      subEl.className = 'rest-sub';
-      subEl.textContent = item.window_label || '';
-      info.appendChild(nameEl);
-      info.appendChild(subEl);
+      const timeEl = document.createElement('div');
+      timeEl.className = 'rest-time';
+      timeEl.textContent = item.window_label || '';
+      topEl.appendChild(nameEl);
+      topEl.appendChild(timeEl);
+      info.appendChild(topEl);
       const members = Array.isArray(item.members) ? item.members : [];
       if (members.length) {
-        const membersEl = document.createElement('div');
-        membersEl.className = 'rest-members';
-        membersEl.textContent = members.map(m => `@${String(m || '').replace(/^@+/, '')}`).filter(Boolean).join(', ');
-        info.appendChild(membersEl);
+        const handles = members
+          .map(m => `@${String(m || '').replace(/^@+/, '')}`)
+          .filter(Boolean);
+        if (handles.length) {
+          const bottomEl = document.createElement('div');
+          bottomEl.className = 'bottom-row';
+          const handleEl = document.createElement('span');
+          handleEl.className = 'rest-user-pill';
+          handleEl.textContent = handles[0];
+          bottomEl.appendChild(handleEl);
+          info.appendChild(bottomEl);
+        }
       }
 
-      const badge = document.createElement('div');
-      badge.className = 'badge badge--active';
-      const cnt = item.count;
-      badge.textContent = cnt === 1 ? '1 gre' : `${cnt} gredo`;
-
       a.appendChild(info);
-      a.appendChild(badge);
       listEl.appendChild(a);
     });
   }

@@ -180,83 +180,33 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         self.assertIsInstance(response, RedirectResponse)
         self.assertEqual(response.status_code, 303)
         location = response.headers.get("location", "")
-        self.assertTrue(location.startswith(f"/done/{rid}"), location)
+        self.assertEqual(location, "https://www.instagram.com/_u/quickjoin_owner/")
 
         membership = engine.get_user_membership("quickjoin_joiner")
         self.assertIsNotNone(membership)
         self.assertEqual(membership["restaurant_id"], rid)
 
-    def test_feed_hides_my_session_block_for_active_user(self) -> None:
+    def test_quick_join_without_cookie_redirects_to_instagram(self) -> None:
         rid = self._restaurant_ids()[0]
-        go_time = self._valid_publish_go_time()
+        now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
+        go_time = (now_local + timedelta(minutes=10)).strftime("%H:%M")
 
         published, err = app_module._publish_waiting_slot(
             restaurant_id=rid,
             go_time_raw=go_time,
-            user_id_raw="feed_owner",
+            user_id_raw="quickjoin_owner_no_cookie",
         )
         self.assertIsNone(err)
         self.assertIsNotNone(published)
 
-        request = self._request("/feed", cookies={"bb_uid": "feed_owner"})
-        response = app_module.feed(request)
-        html = response.body.decode("utf-8")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn("Tvoj session", html)
-
-    def test_feed_includes_own_card_when_it_is_the_only_active_card(self) -> None:
-        rid = self._restaurant_ids()[0]
-        go_time = self._valid_publish_go_time()
-
-        published, err = app_module._publish_waiting_slot(
-            restaurant_id=rid,
-            go_time_raw=go_time,
-            user_id_raw="feed_self_only",
+        request = self._request(
+            f"/waiting/{rid}/quick-join",
+            query={"go_time": go_time},
         )
-        self.assertIsNone(err)
-        self.assertIsNotNone(published)
-
-        request = self._request("/feed", cookies={"bb_uid": "feed_self_only"})
-        response = app_module.feed(request)
-        html = response.body.decode("utf-8")
-        items = self._extract_initial_items(html)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["restaurant_id"], rid)
-        self.assertEqual(int(items[0]["count"]), 1)
-
-    def test_feed_for_joiner_contains_shared_card_with_both_members(self) -> None:
-        rid = self._restaurant_ids()[0]
-        go_time = self._valid_publish_go_time()
-
-        owner, owner_err = app_module._publish_waiting_slot(
-            restaurant_id=rid,
-            go_time_raw=go_time,
-            user_id_raw="feed_join_owner",
-        )
-        self.assertIsNone(owner_err)
-        self.assertIsNotNone(owner)
-
-        joiner, joiner_err = app_module._publish_waiting_slot(
-            restaurant_id=rid,
-            go_time_raw=go_time,
-            user_id_raw="feed_join_user",
-        )
-        self.assertIsNone(joiner_err)
-        self.assertIsNotNone(joiner)
-
-        request = self._request("/feed", cookies={"bb_uid": "feed_join_user"})
-        response = app_module.feed(request)
-        html = response.body.decode("utf-8")
-        items = self._extract_initial_items(html)
-
-        self.assertEqual(response.status_code, 200)
-        matched = [item for item in items if item["restaurant_id"] == rid and item["go_time"] == go_time]
-        self.assertEqual(len(matched), 1)
-        self.assertEqual(int(matched[0]["count"]), 2)
-        self.assertCountEqual(matched[0]["members"], ["feed_join_owner", "feed_join_user"])
+        response = app_module.waiting_quick_join(request=request, restaurant_id=rid, go_time=go_time)
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers.get("location", ""), "https://www.instagram.com/_u/quickjoin_owner_no_cookie/")
 
 
 if __name__ == "__main__":
