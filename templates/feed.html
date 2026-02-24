@@ -49,8 +49,6 @@
     .rest-name{font-size:15px; font-weight:600;}
     .rest-sub{font-size:13px; color: var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .rest-members{font-size:12px; color: var(--muted); margin-top:4px; white-space:normal; overflow-wrap:anywhere;}
-    .badge{padding:8px 10px; border-radius:12px; background: transparent; border:1px solid #05A5F7; font-weight:700; font-size:13px; margin-left:10px; color:#05A5F7; white-space:nowrap;}
-    .badge--active{background: #05A5F7; border-color: #05A5F7; color: #ffffff; font-size:14px; padding:9px 12px; box-shadow: 0 4px 12px rgba(0,166,246,0.25);} 
     .status{font-size:12px; color: var(--muted);} 
     .error{background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #991b1b; padding: 10px 12px; border-radius: 12px; font-size: 13px;}
     .my-card{border:1px solid rgba(0,166,246,0.20); border-radius:12px; padding:12px; background:#EAF7FD;}
@@ -130,13 +128,7 @@
         info.appendChild(membersEl);
       }
 
-      const badge = document.createElement('div');
-      badge.className = 'badge badge--active';
-      const cnt = item.count;
-      badge.textContent = cnt === 1 ? '1 gre' : `${cnt} gredo`;
-
       a.appendChild(info);
-      a.appendChild(badge);
       listEl.appendChild(a);
     });
   }
