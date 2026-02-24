@@ -46,15 +46,37 @@
     .rest-row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:14px; border:1px solid rgba(0,166,246,0.18); background:#F6FCFF; color: var(--text); text-decoration:none; box-shadow: 0 6px 16px rgba(0,166,246,0.06);}
     .rest-row--active{background:#E6F4FE; border-color: var(--accent); box-shadow: 0 6px 16px rgba(0,166,246,0.10);}
     .rest-info{flex:1; min-width:0;}
-    .rest-name{font-size:15px; font-weight:600;}
-    .meta-row{
-      margin-top:8px;
+    .top-row{
       display:flex;
-      align-items:center;
-      flex-wrap:wrap;
-      gap:8px;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      width:100%;
     }
-    .time-pill{
+    .rest-name{
+      font-size:15px;
+      font-weight:600;
+      min-width:0;
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .rest-time{
+      font-size:15px;
+      font-weight:600;
+      color:var(--text);
+      white-space:nowrap;
+      flex-shrink:0;
+      text-align:right;
+    }
+    .bottom-row{
+      display:flex;
+      justify-content:flex-start;
+      margin-top:8px;
+      width:100%;
+    }
+    .rest-user-pill{
       display:inline-flex;
       align-items:center;
       padding:5px 10px;
@@ -66,19 +88,9 @@
       font-weight:800;
       line-height:1.1;
       white-space:nowrap;
-    }
-    .rest-members-handle{
-      display:inline-flex;
-      align-items:center;
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid #05A5F7;
-      background:#05A5F7;
-      color:#FFFFFF;
-      font-size:14px;
-      font-weight:800;
-      line-height:1.1;
-      white-space:nowrap;
+      max-width:70%;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
     .status{font-size:12px; color: var(--muted);} 
     .error{background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #991b1b; padding: 10px 12px; border-radius: 12px; font-size: 13px;}
@@ -143,29 +155,32 @@
 
       const info = document.createElement('div');
       info.className = 'rest-info';
+      const topEl = document.createElement('div');
+      topEl.className = 'top-row';
       const nameEl = document.createElement('div');
       nameEl.className = 'rest-name';
       nameEl.textContent = item.restaurant_name || '';
-      info.appendChild(nameEl);
-      const metaEl = document.createElement('div');
-      metaEl.className = 'meta-row';
-      const subEl = document.createElement('div');
-      subEl.className = 'time-pill';
-      subEl.textContent = item.window_label || '';
-      metaEl.appendChild(subEl);
+      const timeEl = document.createElement('div');
+      timeEl.className = 'rest-time';
+      timeEl.textContent = item.window_label || '';
+      topEl.appendChild(nameEl);
+      topEl.appendChild(timeEl);
+      info.appendChild(topEl);
       const members = Array.isArray(item.members) ? item.members : [];
       if (members.length) {
         const handles = members
           .map(m => `@${String(m || '').replace(/^@+/, '')}`)
           .filter(Boolean);
-        const handleEl = document.createElement('span');
-        handleEl.className = 'rest-members-handle';
-        handleEl.textContent = handles.length > 1
-          ? `${handles[0]} +${handles.length - 1}`
-          : handles[0];
-        metaEl.appendChild(handleEl);
+        if (handles.length) {
+          const bottomEl = document.createElement('div');
+          bottomEl.className = 'bottom-row';
+          const handleEl = document.createElement('span');
+          handleEl.className = 'rest-user-pill';
+          handleEl.textContent = handles[0];
+          bottomEl.appendChild(handleEl);
+          info.appendChild(bottomEl);
+        }
       }
-      info.appendChild(metaEl);
 
       a.appendChild(info);
       listEl.appendChild(a);
