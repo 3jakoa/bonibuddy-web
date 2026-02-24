@@ -1,4 +1,6 @@
 import unittest
+import json
+import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -42,6 +44,19 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         }
         return Request(scope)
 
+    def _extract_initial_items(self, html: str) -> list[dict]:
+        match = re.search(r"const INITIAL_ITEMS = (.*);", html)
+        self.assertIsNotNone(match, "INITIAL_ITEMS payload missing from /feed response.")
+        payload = match.group(1)
+        parsed = json.loads(payload)
+        self.assertIsInstance(parsed, list)
+        return parsed
+
+    def _valid_publish_go_time(self) -> str:
+        now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
+        selected = app_module._default_go_time(now_local=now_local)
+        return selected.strftime("%H:%M")
+
     def test_recent_past_go_time_is_joinable(self) -> None:
         rid = self._restaurant_ids()[0]
         now_utc = datetime.now(timezone.utc).replace(second=0, microsecond=0)
@@ -67,8 +82,8 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
     def test_publish_auto_switches_to_other_restaurant(self) -> None:
         rid_a, rid_b = self._two_restaurant_ids()
         now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
-        go_a = (now_local + timedelta(minutes=10)).strftime("%H:%M")
-        go_b = (now_local + timedelta(minutes=20)).strftime("%H:%M")
+        go_a = self._valid_publish_go_time()
+        go_b = go_a
 
         published_a, err_a = app_module._publish_waiting_slot(
             restaurant_id=rid_a,
@@ -100,8 +115,12 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
     def test_same_restaurant_time_change_keeps_single_membership(self) -> None:
         rid = self._restaurant_ids()[0]
         now_local = datetime.now(app_module.LOCAL_TZ).replace(second=0, microsecond=0)
-        go_a = (now_local + timedelta(minutes=10)).strftime("%H:%M")
-        go_b = (now_local + timedelta(minutes=20)).strftime("%H:%M")
+        selected_a = app_module._default_go_time(now_local=now_local)
+        selected_b = selected_a + timedelta(minutes=app_module.GO_TIME_STEP_MINUTES)
+        if selected_b.date() != selected_a.date():
+            self.skipTest("Cannot pick two valid future go_times near day boundary.")
+        go_a = selected_a.strftime("%H:%M")
+        go_b = selected_b.strftime("%H:%M")
 
         published_a, err_a = app_module._publish_waiting_slot(
             restaurant_id=rid,
