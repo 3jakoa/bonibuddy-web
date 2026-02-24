@@ -161,7 +161,7 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         self.assertIsInstance(response, RedirectResponse)
         self.assertEqual(response.status_code, 303)
         location = response.headers.get("location", "")
-        self.assertEqual(location, "https://instagram.com/quickjoin_owner")
+        self.assertEqual(location, "https://www.instagram.com/_u/quickjoin_owner/")
 
         membership = engine.get_user_membership("quickjoin_joiner")
         self.assertIsNotNone(membership)
@@ -187,7 +187,7 @@ class WaitingJoinBehaviorTests(unittest.TestCase):
         response = app_module.waiting_quick_join(request=request, restaurant_id=rid, go_time=go_time)
         self.assertIsInstance(response, RedirectResponse)
         self.assertEqual(response.status_code, 303)
-        self.assertEqual(response.headers.get("location", ""), "https://instagram.com/quickjoin_owner_no_cookie")
+        self.assertEqual(response.headers.get("location", ""), "https://www.instagram.com/_u/quickjoin_owner_no_cookie/")
 
 
 if __name__ == "__main__":

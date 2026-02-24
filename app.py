@@ -291,6 +291,14 @@ def normalize_instagram(raw: str) -> str:
     return s
 
 
+def instagram_profile_url(raw_handle: str) -> str:
+    handle = normalize_instagram(raw_handle)
+    if not handle:
+        return ""
+    # App-first deep link path used by Instagram; falls back to web when app is unavailable.
+    return f"https://www.instagram.com/_u/{quote(handle)}/"
+
+
 def _normalize_and_validate_instagram(raw: str) -> str | None:
     handle = normalize_instagram(raw)
     if not handle:
@@ -693,10 +701,10 @@ def waiting_quick_join(
     primary_target = target_candidates[0] if target_candidates else ""
     if not cookie_uid:
         if primary_target:
-            return RedirectResponse(url=f"https://instagram.com/{quote(primary_target)}", status_code=303)
+            return RedirectResponse(url=instagram_profile_url(primary_target), status_code=303)
         return RedirectResponse(url=_with_query("/feed", msg="Uporabnik ni več na voljo."), status_code=303)
 
-    target_url = f"https://instagram.com/{quote(primary_target)}" if primary_target else ""
+    target_url = instagram_profile_url(primary_target) if primary_target else ""
 
     published, publish_err = _publish_waiting_slot(
         restaurant_id=restaurant_id_norm,
@@ -720,7 +728,7 @@ def waiting_quick_join(
         members_after_norm = [normalize_instagram(m or "") for m in members_after if normalize_instagram(m or "")]
         target_after = [m for m in members_after_norm if m.lower() != known_uid_norm]
         if target_after:
-            target_url = f"https://instagram.com/{quote(target_after[0])}"
+            target_url = instagram_profile_url(target_after[0])
 
     destination = target_url or _with_query("/feed", msg="Uporabnik ni več na voljo.")
     resp = RedirectResponse(url=destination, status_code=303)
@@ -995,7 +1003,7 @@ def done_screen(
     others = [m for m in members if (m or "").lower().lstrip("@") != normalized_user]
     others_members = [normalize_instagram(m or "") for m in others if normalize_instagram(m or "")]
     others_handles_display = ["@" + m for m in others_members]
-    others_instagram_links = [{"handle": "@" + m, "url": f"https://instagram.com/{quote(m)}"} for m in others_members]
+    others_instagram_links = [{"handle": "@" + m, "url": instagram_profile_url(m)} for m in others_members]
     created_param = request.query_params.get("created")
     if created_param is not None:
         joined_existing = created_param == "0"
@@ -1004,7 +1012,7 @@ def done_screen(
     primary_other = others[0] if others else ""
     go_time_label = _format_go_time(selected_time)
     window_label = _window_label_for(selected_time)
-    instagram_url = f"https://instagram.com/{quote(primary_other)}" if primary_other else ""
+    instagram_url = instagram_profile_url(primary_other) if primary_other else ""
     share_url = _with_query(
         "/",
         go_time=selected_go_time,
