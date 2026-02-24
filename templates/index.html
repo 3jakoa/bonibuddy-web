@@ -839,13 +839,13 @@
           });
         }
         userIdInput.value = data.user_id || normalizedUser;
-        await ensurePwaPushRegistration(userIdInput.value);
-        updatePushOptInUI();
-        if (data.window_label) windowLabel.textContent = data.window_label;
-        setLiveFeedDot(true);
-        renderSelectedCard();
-        setStatus(data.message || 'Plan objavljen.', false);
-        syncUrlState();
+        const redirectUrl = new URL('/', window.location.origin);
+        const nextGoTime = (data.go_time || goTimeInput.value || '').trim();
+        if (nextGoTime) redirectUrl.searchParams.set('go_time', nextGoTime);
+        const refValue = (refInput.value || '').trim();
+        if (refValue) redirectUrl.searchParams.set('ref', refValue);
+        window.location.assign(redirectUrl.toString());
+        return;
       } catch (e) {
         setStatus('Prišlo je do napake. Poskusi znova.', true);
       } finally {
